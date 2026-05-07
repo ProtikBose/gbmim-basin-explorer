@@ -299,6 +299,7 @@
   .ic-clear:hover { color: var(--accent3); border-color: var(--accent3); }
   .ic-row { display:flex; justify-content:space-between; margin-bottom:2px; }
   .ic-val { color:var(--text); }
+  .ic-val { color:var(--text); }
   .badge { display:inline-block; font-size:10px; padding:1px 6px; border-radius:4px; margin-top:5px; font-family:'Bitter',serif; font-weight:600; }
   .badge-ws      { background:rgba(74,222,128,.12);   color:var(--accent2); border:1px solid var(--accent2); }
   .badge-ds      { background:rgba(251,146,60,.12);   color:var(--accent3); border:1px solid var(--accent3); }
@@ -876,15 +877,33 @@ function updateCard(id,type,res,hasWS,hasDS,loading){
       '<span class="badge badge-loading">&#8635; Loading…</span>';
     return;
   }
+
+  // Build extra info rows from optional fields
+  function row(label, val, color) {
+    if (val === undefined || val === null || val === '') return '';
+    var style = color ? ' style="color:'+color+'"' : '';
+    return '<div class="ic-row"><span>'+label+'</span><span class="ic-val"'+style+'>'+val+'</span></div>';
+  }
+
+  // Read raw JSON keys (Basin, Areal_Impact (%), country)
+  var basin       = res['Basin']            || res['basin']        || '';
+  var country     = res['country']          || res['Country']      || '';
+  var arealRaw    = res['Areal_Impact (%)'] || res['areal_impact'] || '';
+  // Strip trailing % if already present, then re-add cleanly
+  var arealVal    = arealRaw ? String(arealRaw).replace(/%$/, '') + '%' : '';
+
   card.innerHTML=
     '<div class="ic-title'+(isBarrier?' barrier-title':'')+'">'+
       (isBarrier?'Barrier':'Reservoir')+' #'+id+
       '<button class="ic-clear" onclick="clearSelection()">&#10005; Clear</button>'+
     '</div>'+
-    '<div class="ic-row"><span>Latitude</span><span class="ic-val">'+res.lat.toFixed(5)+'</span></div>'+
-    '<div class="ic-row"><span>Longitude</span><span class="ic-val">'+res.lng.toFixed(5)+'</span></div>'+
-    '<div class="ic-row"><span>Type</span><span class="ic-val" style="color:'+(isBarrier?'var(--barrier)':'var(--accent)')+'">'+
-      (isBarrier?'Barrier':'Reservoir')+'</span></div>'+
+    '<div style="margin-top:10px"></div>'+
+    row('Latitude',     res.lat.toFixed(5))+
+    row('Longitude',    res.lng.toFixed(5))+
+    row('Type',         isBarrier?'Barrier':'Reservoir', isBarrier?'var(--barrier)':'var(--accent)')+
+    row('Country',      country)+
+    row('Basin',        basin)+
+    row('Areal Impact', arealVal)+
     '<div style="margin-top:6px;">'+
       '<span class="badge '+(hasWS?'badge-ws':'badge-none')+'">'+(hasWS?'&#10003; Watershed':'&#10007; No watershed')+'</span> '+
       '<span class="badge '+(hasDS?'badge-ds':'badge-none')+'">'+(hasDS?'&#10003; Downstream':'&#10007; No path')+'</span>'+
