@@ -19,7 +19,7 @@
     --barrier:    #f472b6;   /* barrier    — pink     */
     --text:       #e2e8f0;
     --muted:      #64748b;
-    --panel-w:    300px;
+    --panel-w:    400px;
     --nav-h:      56px;
   }
 
@@ -306,6 +306,87 @@
   .badge-none    { background:rgba(100,116,139,.1);   color:var(--muted);   border:1px solid var(--border); }
   .badge-loading { background:rgba(56,189,248,.1);    color:var(--accent);  border:1px solid var(--accent); animation:pulse 1s infinite; }
 
+  /* ── Time series card ── */
+  #ts-card {
+    margin: 0 10px 8px;
+    padding: 10px 12px 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    flex-shrink: 0;
+    display: none;            /* shown only when a feature is selected */
+    transition: border-color .3s;
+  }
+  #ts-card.active         { border-color: var(--accent);  display: block; }
+  #ts-card.barrier-active { border-color: var(--barrier); display: block; }
+  .ts-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .ts-title {
+    font-family: 'Bitter', serif;
+    font-size: 10px; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase;
+    color: var(--accent);
+  }
+  #ts-card.barrier-active .ts-title { color: var(--barrier); }
+  .ts-metric {
+    background: none; border: 1px solid var(--border); border-radius: 5px;
+    color: var(--muted);
+    font-family: 'Bitter', serif; font-size: 9px; font-weight: 600;
+    letter-spacing: .04em;
+    padding: 2px 6px; cursor: pointer;
+    outline: none;
+  }
+  .ts-metric:hover, .ts-metric:focus { color: var(--text); border-color: var(--muted); }
+  .ts-stats {
+    display: flex; justify-content: space-between;
+    font-size: 10px; color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .ts-stat-val {
+    font-family: 'Bitter', serif; font-weight: 600;
+    color: var(--text);
+    margin-left: 3px;
+  }
+  .ts-chart-wrap {
+    position: relative;
+    height: 110px;
+    width: 100%;
+  }
+  .ts-chart-wrap svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .ts-axis-x {
+    display: flex; justify-content: space-between;
+    font-size: 9px; color: var(--muted);
+    margin-top: 3px;
+    font-family: 'Bitter', serif;
+  }
+  .ts-hover-line  { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 2; opacity: 0; }
+  .ts-hover-dot   { fill: var(--accent); stroke: var(--bg); stroke-width: 1.5; opacity: 0; }
+  #ts-card.barrier-active .ts-hover-dot { fill: var(--barrier); }
+  .ts-tooltip {
+    position: absolute;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 6px;
+    font-size: 10px;
+    color: var(--text);
+    pointer-events: none;
+    white-space: nowrap;
+    transform: translate(-50%, -120%);
+    opacity: 0;
+    transition: opacity .12s;
+    font-family: 'Bitter', serif;
+  }
+  .ts-placeholder-note {
+    font-size: 9px; color: var(--muted);
+    font-style: italic;
+    margin-top: 4px;
+    text-align: right;
+    opacity: .7;
+  }
+
   /* ── Legend ── */
   #legend { margin:0 10px 10px; padding:9px 12px; background:var(--bg); border:1px solid var(--border); border-radius:8px; font-size:11px; flex-shrink:0; }
   .leg-title { font-family:'Bitter',serif; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:7px; font-weight:600; }
@@ -495,6 +576,30 @@
     <!-- Info card -->
     <div id="info-card">
       <div style="color:var(--muted);font-size:11px;padding-top:2px;">Select a feature to view details</div>
+    </div>
+
+    <!-- Time series card (per-feature, hidden until selection) -->
+    <div id="ts-card">
+      <div class="ts-head">
+        <span class="ts-title">Time Series</span>
+        <select class="ts-metric" id="ts-metric" onchange="renderTimeSeries()">
+          <option value="storage">Storage (Mm³)</option>
+          <option value="level">Water Level (m)</option>
+          <option value="inflow">Inflow (m³/s)</option>
+          <option value="outflow">Outflow (m³/s)</option>
+        </select>
+      </div>
+      <div class="ts-stats">
+        <span>min<span class="ts-stat-val" id="ts-min">–</span></span>
+        <span>mean<span class="ts-stat-val" id="ts-mean">–</span></span>
+        <span>max<span class="ts-stat-val" id="ts-max">–</span></span>
+      </div>
+      <div class="ts-chart-wrap" id="ts-chart-wrap">
+        <svg id="ts-svg" viewBox="0 0 280 70" preserveAspectRatio="none"></svg>
+        <div class="ts-tooltip" id="ts-tooltip"></div>
+      </div>
+      <div class="ts-axis-x" id="ts-axis-x"><span>–</span><span>–</span></div>
+      <div class="ts-placeholder-note">placeholder data</div>
     </div>
 
     <!-- Legend -->
@@ -833,6 +938,8 @@ function clearSelection() {
   var card = document.getElementById('info-card');
   card.className = '';
   card.innerHTML = '<div style="color:var(--muted);font-size:11px;padding-top:2px;">Select a feature to view details</div>';
+  // Hide time series
+  hideTimeSeries();
 }
 
 function selectFeature(id, type) {
@@ -864,6 +971,7 @@ function selectFeature(id, type) {
     var drawn=drawLayers(wsData,dsData);
     if(!drawn.hasWS&&!drawn.hasDS&&res) map.flyTo([res.lat,res.lng],11);
     updateCard(id,type,res,drawn.hasWS,drawn.hasDS,false);
+    showTimeSeries(id, type);
     document.getElementById('spinner').style.display='none';
   });
 }
@@ -908,6 +1016,167 @@ function updateCard(id,type,res,hasWS,hasDS,loading){
       '<span class="badge '+(hasWS?'badge-ws':'badge-none')+'">'+(hasWS?'&#10003; Watershed':'&#10007; No watershed')+'</span> '+
       '<span class="badge '+(hasDS?'badge-ds':'badge-none')+'">'+(hasDS?'&#10003; Downstream':'&#10007; No path')+'</span>'+
     '</div>';
+}
+
+// ─────────────────────────────────────────────────
+//  Time series (placeholder data — deterministic by feature ID)
+// ─────────────────────────────────────────────────
+//
+//  HOW TO PLUG IN REAL DATA LATER
+//  ──────────────────────────────
+//  Replace `generatePlaceholderSeries(id, type, metric)` with a fetch:
+//
+//    function fetchTimeSeries(id, type) {
+//      return fetchGeoJSON('timeseries_' + id + '.json', type);
+//    }
+//
+//  Expected JSON shape per feature:
+//    { "dates":  ["2020-01", "2020-02", ...],
+//      "storage":[ 145.2,    150.1,    ...],
+//      "level":  [ ... ],
+//      "inflow": [ ... ],
+//      "outflow":[ ... ] }
+//
+//  Then store the result in `tsData` and call renderTimeSeries().
+//
+var tsData = null;          // current feature's series cache
+var TS_MONTHS = 36;         // 3 years of monthly data
+
+// Tiny seeded PRNG so each feature gets a stable but distinct series
+function seededRandom(seed) {
+  var s = seed >>> 0;
+  return function() {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+
+function generatePlaceholderSeries(id, type) {
+  // Derive a numeric seed from id (handles strings too)
+  var seed = 0;
+  var idStr = String(id);
+  for (var i = 0; i < idStr.length; i++) seed = (seed * 31 + idStr.charCodeAt(i)) >>> 0;
+  if (type === 'barrier') seed ^= 0x9e3779b9;
+  var rnd = seededRandom(seed);
+
+  // Per-feature baseline characteristics
+  var baseStorage = 80 + rnd() * 320;       // 80–400 Mm³
+  var baseLevel   = 100 + rnd() * 80;       // 100–180 m
+  var baseInflow  = 40 + rnd() * 160;       // 40–200 m³/s
+  var amp         = 0.18 + rnd() * 0.25;    // seasonal amplitude
+  var phase       = rnd() * Math.PI * 2;
+
+  var dates = [], storage = [], level = [], inflow = [], outflow = [];
+  // Build monthly series ending at the most recent month
+  var now = new Date();
+  for (var k = TS_MONTHS - 1; k >= 0; k--) {
+    var d = new Date(now.getFullYear(), now.getMonth() - k, 1);
+    var label = d.toISOString().slice(0, 7);  // YYYY-MM
+    dates.push(label);
+
+    var t = (TS_MONTHS - 1 - k);
+    var season  = Math.sin((t / 12) * Math.PI * 2 + phase);   // annual cycle
+    var noise   = (rnd() - 0.5) * 0.08;
+    var trend   = (t / TS_MONTHS) * (rnd() * 0.1 - 0.05);     // mild trend
+
+    storage.push( +(baseStorage * (1 + amp * season + noise + trend)).toFixed(1) );
+    level.push(   +(baseLevel   * (1 + amp * 0.4 * season + noise * 0.5)).toFixed(2) );
+    var inf = baseInflow * (1 + amp * 1.2 * season + noise);
+    inflow.push(  +Math.max(0, inf).toFixed(1) );
+    outflow.push( +Math.max(0, inf * (0.85 + (rnd() - 0.5) * 0.2)).toFixed(1) );
+  }
+  return { dates: dates, storage: storage, level: level, inflow: inflow, outflow: outflow };
+}
+
+function renderTimeSeries() {
+  if (!tsData || !activeId) return;
+  var metric = document.getElementById('ts-metric').value;
+  var values = tsData[metric];
+  var dates  = tsData.dates;
+  if (!values || !values.length) return;
+
+  // Stats
+  var min = Math.min.apply(null, values);
+  var max = Math.max.apply(null, values);
+  var sum = values.reduce(function(a,b){ return a+b; }, 0);
+  var mean = sum / values.length;
+  // Decimals: small numbers get more precision
+  var dp = max < 10 ? 2 : (max < 100 ? 1 : 0);
+  document.getElementById('ts-min').textContent  = min.toFixed(dp);
+  document.getElementById('ts-mean').textContent = mean.toFixed(dp);
+  document.getElementById('ts-max').textContent  = max.toFixed(dp);
+
+  // SVG viewBox is 280x70 — but preserveAspectRatio="none" stretches X to fill
+  var W = 280, H = 70, pad = 4;
+  var n = values.length;
+  var range = max - min || 1;
+
+  function xAt(i) { return pad + (i / (n - 1)) * (W - 2 * pad); }
+  function yAt(v) { return H - pad - ((v - min) / range) * (H - 2 * pad); }
+
+  // Build path + area
+  var pathD = '', areaD = '';
+  for (var i = 0; i < n; i++) {
+    var x = xAt(i), y = yAt(values[i]);
+    pathD += (i === 0 ? 'M' : 'L') + x.toFixed(2) + ' ' + y.toFixed(2) + ' ';
+  }
+  areaD = pathD + 'L' + xAt(n - 1).toFixed(2) + ' ' + (H - pad) + ' L' + xAt(0).toFixed(2) + ' ' + (H - pad) + ' Z';
+
+  var isBarrier = activeType === 'barrier';
+  var stroke = isBarrier ? '#f472b6' : '#38bdf8';
+  var fill   = isBarrier ? 'rgba(244,114,182,0.12)' : 'rgba(56,189,248,0.12)';
+
+  var svg = document.getElementById('ts-svg');
+  svg.innerHTML =
+    '<path d="' + areaD + '" fill="' + fill + '" stroke="none"/>' +
+    '<path d="' + pathD + '" fill="none" stroke="' + stroke + '" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' +
+    '<line class="ts-hover-line" id="ts-hover-line" x1="0" y1="0" x2="0" y2="' + H + '"/>' +
+    '<circle class="ts-hover-dot"  id="ts-hover-dot"  r="3" cx="0" cy="0"/>';
+
+  // X-axis: first + last date
+  var axis = document.getElementById('ts-axis-x');
+  axis.innerHTML = '<span>' + dates[0] + '</span><span>' + dates[n - 1] + '</span>';
+
+  // Hover interaction
+  var wrap = document.getElementById('ts-chart-wrap');
+  var tip  = document.getElementById('ts-tooltip');
+  var line = document.getElementById('ts-hover-line');
+  var dot  = document.getElementById('ts-hover-dot');
+
+  wrap.onmousemove = function(e) {
+    var rect = wrap.getBoundingClientRect();
+    var relX = (e.clientX - rect.left) / rect.width;
+    var idx  = Math.round(relX * (n - 1));
+    if (idx < 0) idx = 0; if (idx > n - 1) idx = n - 1;
+    var xPx = (xAt(idx) / W) * rect.width;
+    var yPx = (yAt(values[idx]) / H) * rect.height;
+    // Update SVG markers using viewBox coords
+    line.setAttribute('x1', xAt(idx)); line.setAttribute('x2', xAt(idx));
+    line.style.opacity = 1;
+    dot.setAttribute('cx', xAt(idx));  dot.setAttribute('cy', yAt(values[idx]));
+    dot.style.opacity = 1;
+    tip.style.left = xPx + 'px';
+    tip.style.top  = yPx + 'px';
+    tip.textContent = dates[idx] + ' · ' + values[idx].toFixed(dp);
+    tip.style.opacity = 1;
+  };
+  wrap.onmouseleave = function() {
+    line.style.opacity = 0;
+    dot.style.opacity  = 0;
+    tip.style.opacity  = 0;
+  };
+}
+
+function showTimeSeries(id, type) {
+  var card = document.getElementById('ts-card');
+  card.className = type === 'barrier' ? 'barrier-active' : 'active';
+  tsData = generatePlaceholderSeries(id, type);
+  renderTimeSeries();
+}
+
+function hideTimeSeries() {
+  document.getElementById('ts-card').className = '';
+  tsData = null;
 }
 
 // ─────────────────────────────────────────────────
