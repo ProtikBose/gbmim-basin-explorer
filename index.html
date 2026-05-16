@@ -353,12 +353,37 @@
     position: relative;
     height: 110px;
     width: 100%;
+    display: flex;
+    align-items: stretch;
+    gap: 4px;
+  }
+  .ts-yaxis {
+    width: 32px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-end;
+    font-size: 9px;
+    color: var(--muted);
+    font-family: 'Bitter', serif;
+    font-weight: 600;
+    padding: 1px 0;
+    text-align: right;
+  }
+  .ts-yaxis span { line-height: 1; }
+  .ts-plot {
+    flex: 1;
+    position: relative;
+    min-width: 0;
+    border-left: 1px solid var(--border);
   }
   .ts-chart-wrap svg { display: block; width: 100%; height: 100%; overflow: visible; }
   .ts-axis-x {
     display: flex; justify-content: space-between;
     font-size: 9px; color: var(--muted);
     margin-top: 3px;
+    padding-left: 36px;  /* align under plot (yaxis 32px + gap 4px) */
     font-family: 'Bitter', serif;
   }
   .ts-hover-line  { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 2; opacity: 0; }
@@ -594,8 +619,15 @@
         <span>max<span class="ts-stat-val" id="ts-max">–</span></span>
       </div>
       <div class="ts-chart-wrap" id="ts-chart-wrap">
-        <svg id="ts-svg" viewBox="0 0 280 110" preserveAspectRatio="none"></svg>
-        <div class="ts-tooltip" id="ts-tooltip"></div>
+        <div class="ts-yaxis" id="ts-yaxis">
+          <span id="ts-y-max">–</span>
+          <span id="ts-y-mid">–</span>
+          <span id="ts-y-min">–</span>
+        </div>
+        <div class="ts-plot">
+          <svg id="ts-svg" viewBox="0 0 280 110" preserveAspectRatio="none"></svg>
+          <div class="ts-tooltip" id="ts-tooltip"></div>
+        </div>
       </div>
       <div class="ts-axis-x" id="ts-axis-x"><span>–</span><span>–</span></div>
     </div>
@@ -1071,6 +1103,11 @@ function renderTimeSeries() {
   document.getElementById('ts-mean').textContent = mean.toFixed(dp);
   document.getElementById('ts-max').textContent  = max.toFixed(dp);
 
+  // Y-axis tick labels (max at top, midpoint, min at bottom)
+  document.getElementById('ts-y-max').textContent = max.toFixed(dp);
+  document.getElementById('ts-y-mid').textContent = ((max + min) / 2).toFixed(dp);
+  document.getElementById('ts-y-min').textContent = min.toFixed(dp);
+
   // SVG viewBox is 280x110 — preserveAspectRatio="none" stretches X to fill
   var W = 280, H = 110, pad = 4;
   var n = values.length;
@@ -1112,14 +1149,15 @@ function renderTimeSeries() {
   var axis = document.getElementById('ts-axis-x');
   axis.innerHTML = '<span>' + dates[0] + '</span><span>' + dates[n - 1] + '</span>';
 
-  // Hover interaction
+  // Hover interaction (bound to plot column, not the outer wrap which includes the y-axis)
   var wrap = document.getElementById('ts-chart-wrap');
+  var plot = wrap.querySelector('.ts-plot');
   var tip  = document.getElementById('ts-tooltip');
   var line = document.getElementById('ts-hover-line');
   var dot  = document.getElementById('ts-hover-dot');
 
-  wrap.onmousemove = function(e) {
-    var rect = wrap.getBoundingClientRect();
+  plot.onmousemove = function(e) {
+    var rect = plot.getBoundingClientRect();
     var relX = (e.clientX - rect.left) / rect.width;
     var idx  = Math.round(relX * (n - 1));
     if (idx < 0) idx = 0; if (idx > n - 1) idx = n - 1;
@@ -1137,10 +1175,10 @@ function renderTimeSeries() {
     dot.style.opacity = 1;
     tip.style.left = xPx + 'px';
     tip.style.top  = yPx + 'px';
-    tip.textContent = dates[idx] + ' · ' + v.toFixed(dp);
+    tip.innerHTML = '<span style="color:var(--muted)">' + dates[idx] + '</span> &nbsp;<span style="color:var(--text)">' + v.toFixed(dp) + '</span>';
     tip.style.opacity = 1;
   };
-  wrap.onmouseleave = function() {
+  plot.onmouseleave = function() {
     line.style.opacity = 0;
     dot.style.opacity  = 0;
     tip.style.opacity  = 0;
@@ -1152,6 +1190,9 @@ function renderTSEmpty() {
   document.getElementById('ts-min').textContent  = '–';
   document.getElementById('ts-mean').textContent = '–';
   document.getElementById('ts-max').textContent  = '–';
+  document.getElementById('ts-y-max').textContent = '–';
+  document.getElementById('ts-y-mid').textContent = '–';
+  document.getElementById('ts-y-min').textContent = '–';
   document.getElementById('ts-axis-x').innerHTML = '<span>–</span><span>–</span>';
   document.getElementById('ts-svg').innerHTML =
     '<text x="140" y="55" text-anchor="middle" fill="#64748b" font-family="Bitter,serif" font-size="11" font-style="italic">No time series data</text>';
@@ -1165,6 +1206,9 @@ function showTimeSeries(id, type) {
   document.getElementById('ts-min').textContent  = '…';
   document.getElementById('ts-mean').textContent = '…';
   document.getElementById('ts-max').textContent  = '…';
+  document.getElementById('ts-y-max').textContent = '…';
+  document.getElementById('ts-y-mid').textContent = '…';
+  document.getElementById('ts-y-min').textContent = '…';
   document.getElementById('ts-svg').innerHTML =
     '<text x="140" y="55" text-anchor="middle" fill="#64748b" font-family="Bitter,serif" font-size="11" font-style="italic">Loading…</text>';
   document.getElementById('ts-axis-x').innerHTML = '<span>–</span><span>–</span>';
