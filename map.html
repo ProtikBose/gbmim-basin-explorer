@@ -583,10 +583,9 @@
       <div class="ts-head">
         <span class="ts-title">Time Series</span>
         <select class="ts-metric" id="ts-metric" onchange="renderTimeSeries()">
-          <option value="storage">Storage (Mm³)</option>
-          <option value="level">Water Level (m)</option>
-          <option value="inflow">Inflow (m³/s)</option>
-          <option value="outflow">Outflow (m³/s)</option>
+          <option value="Surface">Surface Runoff</option>
+          <option value="Sub_Surface">Sub-Surface Runoff</option>
+          <option value="Precip">Precipitation</option>
         </select>
       </div>
       <div class="ts-stats">
@@ -595,11 +594,10 @@
         <span>max<span class="ts-stat-val" id="ts-max">–</span></span>
       </div>
       <div class="ts-chart-wrap" id="ts-chart-wrap">
-        <svg id="ts-svg" viewBox="0 0 280 70" preserveAspectRatio="none"></svg>
+        <svg id="ts-svg" viewBox="0 0 280 110" preserveAspectRatio="none"></svg>
         <div class="ts-tooltip" id="ts-tooltip"></div>
       </div>
       <div class="ts-axis-x" id="ts-axis-x"><span>–</span><span>–</span></div>
-      <div class="ts-placeholder-note">placeholder data</div>
     </div>
 
     <!-- Legend -->
@@ -787,8 +785,8 @@ function updateMarkerVisibility() {
 // Load coordinates from JSON, then init markers
 // ─────────────────────────────────────────────────
 Promise.all([
-  fetch(GEOJSON_DIR + '/reservoirs.json').then(function(r){ return r.json(); }),
-  fetch(GEOJSON_DIR + '/barriers.json').then(function(r){ return r.json(); })
+  fetch(GEOJSON_DIR + '/reservoir.json').then(function(r){ return r.json(); }),
+  fetch(GEOJSON_DIR + '/barrier.json').then(function(r){ return r.json(); })
 ]).then(function(results) {
   RESERVOIRS = results[0] || [];
   BARRIERS   = results[1] || [];
@@ -1019,73 +1017,29 @@ function updateCard(id,type,res,hasWS,hasDS,loading){
 }
 
 // ─────────────────────────────────────────────────
-//  Time series (placeholder data — deterministic by feature ID)
+//  Time series (real runoff data — fetched per feature)
 // ─────────────────────────────────────────────────
 //
-//  HOW TO PLUG IN REAL DATA LATER
-//  ──────────────────────────────
-//  Replace `generatePlaceholderSeries(id, type, metric)` with a fetch:
+//  Data files live alongside watershed/downstream GeoJSON:
+//      geojson/reservoir/timeseries_{id}.json
+//      geojson/barrier/timeseries_{id}.json
 //
-//    function fetchTimeSeries(id, type) {
-//      return fetchGeoJSON('timeseries_' + id + '.json', type);
-//    }
+//  Shape:
+//      { "dates":       ["2000-01", ...],
+//        "Surface":     [...],
+//        "Sub_Surface": [...],
+//        "Precip":      [...] }
 //
-//  Expected JSON shape per feature:
-//    { "dates":  ["2020-01", "2020-02", ...],
-//      "storage":[ 145.2,    150.1,    ...],
-//      "level":  [ ... ],
-//      "inflow": [ ... ],
-//      "outflow":[ ... ] }
-//
-//  Then store the result in `tsData` and call renderTimeSeries().
-//
-var tsData = null;          // current feature's series cache
-var TS_MONTHS = 36;         // 3 years of monthly data
+var tsData  = null;   // current feature's series
+var tsCache = {};     // feature_key -> series
 
-// Tiny seeded PRNG so each feature gets a stable but distinct series
-function seededRandom(seed) {
-  var s = seed >>> 0;
-  return function() {
-    s = (s * 1664525 + 1013904223) >>> 0;
-    return s / 4294967296;
-  };
-}
-
-function generatePlaceholderSeries(id, type) {
-  // Derive a numeric seed from id (handles strings too)
-  var seed = 0;
-  var idStr = String(id);
-  for (var i = 0; i < idStr.length; i++) seed = (seed * 31 + idStr.charCodeAt(i)) >>> 0;
-  if (type === 'barrier') seed ^= 0x9e3779b9;
-  var rnd = seededRandom(seed);
-
-  // Per-feature baseline characteristics
-  var baseStorage = 80 + rnd() * 320;       // 80–400 Mm³
-  var baseLevel   = 100 + rnd() * 80;       // 100–180 m
-  var baseInflow  = 40 + rnd() * 160;       // 40–200 m³/s
-  var amp         = 0.18 + rnd() * 0.25;    // seasonal amplitude
-  var phase       = rnd() * Math.PI * 2;
-
-  var dates = [], storage = [], level = [], inflow = [], outflow = [];
-  // Build monthly series ending at the most recent month
-  var now = new Date();
-  for (var k = TS_MONTHS - 1; k >= 0; k--) {
-    var d = new Date(now.getFullYear(), now.getMonth() - k, 1);
-    var label = d.toISOString().slice(0, 7);  // YYYY-MM
-    dates.push(label);
-
-    var t = (TS_MONTHS - 1 - k);
-    var season  = Math.sin((t / 12) * Math.PI * 2 + phase);   // annual cycle
-    var noise   = (rnd() - 0.5) * 0.08;
-    var trend   = (t / TS_MONTHS) * (rnd() * 0.1 - 0.05);     // mild trend
-
-    storage.push( +(baseStorage * (1 + amp * season + noise + trend)).toFixed(1) );
-    level.push(   +(baseLevel   * (1 + amp * 0.4 * season + noise * 0.5)).toFixed(2) );
-    var inf = baseInflow * (1 + amp * 1.2 * season + noise);
-    inflow.push(  +Math.max(0, inf).toFixed(1) );
-    outflow.push( +Math.max(0, inf * (0.85 + (rnd() - 0.5) * 0.2)).toFixed(1) );
-  }
-  return { dates: dates, storage: storage, level: level, inflow: inflow, outflow: outflow };
+function fetchTimeSeries(id, type) {
+  var key = type + '_' + id;
+  if (tsCache[key]) return Promise.resolve(tsCache[key]);
+  return fetchGeoJSON('timeseries_' + id + '.json', type).then(function(d) {
+    if (d) tsCache[key] = d;
+    return d;
+  });
 }
 
 function renderTimeSeries() {
@@ -1093,34 +1047,55 @@ function renderTimeSeries() {
   var metric = document.getElementById('ts-metric').value;
   var values = tsData[metric];
   var dates  = tsData.dates;
-  if (!values || !values.length) return;
+  if (!values || !values.length) { renderTSEmpty(); return; }
 
-  // Stats
-  var min = Math.min.apply(null, values);
-  var max = Math.max.apply(null, values);
-  var sum = values.reduce(function(a,b){ return a+b; }, 0);
-  var mean = sum / values.length;
-  // Decimals: small numbers get more precision
-  var dp = max < 10 ? 2 : (max < 100 ? 1 : 0);
+  // Filter nulls for stats; keep original array length for index alignment
+  var clean = values.filter(function(v){ return v !== null && v !== undefined && !isNaN(v); });
+  if (!clean.length) { renderTSEmpty(); return; }
+
+  var min = Math.min.apply(null, clean);
+  var max = Math.max.apply(null, clean);
+  var sum = clean.reduce(function(a,b){ return a+b; }, 0);
+  var mean = sum / clean.length;
+
+  // Choose precision adaptively based on magnitude
+  var absMax = Math.max(Math.abs(min), Math.abs(max));
+  var dp;
+  if      (absMax >= 100) dp = 0;
+  else if (absMax >= 10)  dp = 1;
+  else if (absMax >= 1)   dp = 2;
+  else if (absMax >= 0.1) dp = 3;
+  else                    dp = 4;
+
   document.getElementById('ts-min').textContent  = min.toFixed(dp);
   document.getElementById('ts-mean').textContent = mean.toFixed(dp);
   document.getElementById('ts-max').textContent  = max.toFixed(dp);
 
-  // SVG viewBox is 280x70 — but preserveAspectRatio="none" stretches X to fill
-  var W = 280, H = 70, pad = 4;
+  // SVG viewBox is 280x110 — preserveAspectRatio="none" stretches X to fill
+  var W = 280, H = 110, pad = 4;
   var n = values.length;
   var range = max - min || 1;
 
   function xAt(i) { return pad + (i / (n - 1)) * (W - 2 * pad); }
   function yAt(v) { return H - pad - ((v - min) / range) * (H - 2 * pad); }
 
-  // Build path + area
-  var pathD = '', areaD = '';
+  // Build path with breaks across nulls (M starts a new sub-path)
+  var pathD = '';
+  var startNewSeg = true;
   for (var i = 0; i < n; i++) {
-    var x = xAt(i), y = yAt(values[i]);
-    pathD += (i === 0 ? 'M' : 'L') + x.toFixed(2) + ' ' + y.toFixed(2) + ' ';
+    var v = values[i];
+    if (v === null || v === undefined || isNaN(v)) { startNewSeg = true; continue; }
+    var x = xAt(i), y = yAt(v);
+    pathD += (startNewSeg ? 'M' : 'L') + x.toFixed(2) + ' ' + y.toFixed(2) + ' ';
+    startNewSeg = false;
   }
-  areaD = pathD + 'L' + xAt(n - 1).toFixed(2) + ' ' + (H - pad) + ' L' + xAt(0).toFixed(2) + ' ' + (H - pad) + ' Z';
+  // Area path: only build if there are no nulls; otherwise omit to avoid weird fills
+  var hasNulls = clean.length !== n;
+  var areaD = '';
+  if (!hasNulls) {
+    areaD = pathD + 'L' + xAt(n - 1).toFixed(2) + ' ' + (H - pad) +
+                   ' L' + xAt(0).toFixed(2)     + ' ' + (H - pad) + ' Z';
+  }
 
   var isBarrier = activeType === 'barrier';
   var stroke = isBarrier ? '#f472b6' : '#38bdf8';
@@ -1128,7 +1103,7 @@ function renderTimeSeries() {
 
   var svg = document.getElementById('ts-svg');
   svg.innerHTML =
-    '<path d="' + areaD + '" fill="' + fill + '" stroke="none"/>' +
+    (areaD ? '<path d="' + areaD + '" fill="' + fill + '" stroke="none"/>' : '') +
     '<path d="' + pathD + '" fill="none" stroke="' + stroke + '" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' +
     '<line class="ts-hover-line" id="ts-hover-line" x1="0" y1="0" x2="0" y2="' + H + '"/>' +
     '<circle class="ts-hover-dot"  id="ts-hover-dot"  r="3" cx="0" cy="0"/>';
@@ -1148,16 +1123,21 @@ function renderTimeSeries() {
     var relX = (e.clientX - rect.left) / rect.width;
     var idx  = Math.round(relX * (n - 1));
     if (idx < 0) idx = 0; if (idx > n - 1) idx = n - 1;
+    var v = values[idx];
+    if (v === null || v === undefined || isNaN(v)) {
+      // No data at this point — hide markers
+      line.style.opacity = 0; dot.style.opacity = 0; tip.style.opacity = 0;
+      return;
+    }
     var xPx = (xAt(idx) / W) * rect.width;
-    var yPx = (yAt(values[idx]) / H) * rect.height;
-    // Update SVG markers using viewBox coords
+    var yPx = (yAt(v)   / H) * rect.height;
     line.setAttribute('x1', xAt(idx)); line.setAttribute('x2', xAt(idx));
     line.style.opacity = 1;
-    dot.setAttribute('cx', xAt(idx));  dot.setAttribute('cy', yAt(values[idx]));
+    dot.setAttribute('cx', xAt(idx));  dot.setAttribute('cy', yAt(v));
     dot.style.opacity = 1;
     tip.style.left = xPx + 'px';
     tip.style.top  = yPx + 'px';
-    tip.textContent = dates[idx] + ' · ' + values[idx].toFixed(dp);
+    tip.textContent = dates[idx] + ' · ' + v.toFixed(dp);
     tip.style.opacity = 1;
   };
   wrap.onmouseleave = function() {
@@ -1167,11 +1147,37 @@ function renderTimeSeries() {
   };
 }
 
+// Show an "empty" state inside the chart when a feature has no time series
+function renderTSEmpty() {
+  document.getElementById('ts-min').textContent  = '–';
+  document.getElementById('ts-mean').textContent = '–';
+  document.getElementById('ts-max').textContent  = '–';
+  document.getElementById('ts-axis-x').innerHTML = '<span>–</span><span>–</span>';
+  document.getElementById('ts-svg').innerHTML =
+    '<text x="140" y="55" text-anchor="middle" fill="#64748b" font-family="Bitter,serif" font-size="11" font-style="italic">No time series data</text>';
+}
+
 function showTimeSeries(id, type) {
   var card = document.getElementById('ts-card');
   card.className = type === 'barrier' ? 'barrier-active' : 'active';
-  tsData = generatePlaceholderSeries(id, type);
-  renderTimeSeries();
+
+  // Reset stats + show a brief loading indicator inside the chart
+  document.getElementById('ts-min').textContent  = '…';
+  document.getElementById('ts-mean').textContent = '…';
+  document.getElementById('ts-max').textContent  = '…';
+  document.getElementById('ts-svg').innerHTML =
+    '<text x="140" y="55" text-anchor="middle" fill="#64748b" font-family="Bitter,serif" font-size="11" font-style="italic">Loading…</text>';
+  document.getElementById('ts-axis-x').innerHTML = '<span>–</span><span>–</span>';
+
+  // Capture the click so a fast follow-up click on another feature doesn't render stale data
+  var thisId = id, thisType = type;
+  fetchTimeSeries(id, type).then(function(data) {
+    // If the user has since clicked elsewhere, drop this result
+    if (activeId !== thisId || activeType !== thisType) return;
+    if (!data) { tsData = null; renderTSEmpty(); return; }
+    tsData = data;
+    renderTimeSeries();
+  });
 }
 
 function hideTimeSeries() {
