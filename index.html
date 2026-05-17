@@ -159,6 +159,140 @@
   .close-page { position:fixed; top:calc(var(--nav-h) + 16px); right:24px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--muted); padding:6px 14px; font-size:12px; cursor:pointer; z-index:900; }
   .close-page:hover { color:var(--text); }
 
+  /* ── How to Use page ── */
+  .howto-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 18px;
+    max-width: 1100px;
+    margin-bottom: 32px;
+  }
+  .howto-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: border-color .2s, transform .2s;
+  }
+  .howto-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .howto-step {
+    font-family: 'Bitter', serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  .howto-title {
+    font-family: 'Bitter', serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.3;
+  }
+  .howto-body {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .howto-body b   { color: var(--text); font-weight: 600; }
+  .howto-body kbd {
+    display: inline-block;
+    font-family: 'Bitter', serif;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 1px 7px;
+    margin: 0 2px;
+  }
+  /* Tiny demo icons used inside cards to mirror real UI affordances */
+  .howto-icon-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 4px 0 2px;
+  }
+  .ic-dot-blue    { width:10px; height:10px; border-radius:50%; background:var(--accent);  box-shadow:0 0 6px var(--accent); display:inline-block; }
+  .ic-dot-red     { width:10px; height:10px; background:var(--barrier); box-shadow:0 0 6px var(--barrier); display:inline-block; transform:rotate(45deg); }
+  .ic-swatch-green{ width:18px; height:5px; border-radius:2px; background:var(--accent2); opacity:.7; display:inline-block; }
+  .ic-swatch-org  { width:18px; height:3px; border-radius:2px; background:var(--accent3); display:inline-block; }
+  .ic-toggle {
+    width: 28px; height: 16px; border-radius: 16px; background: var(--accent);
+    position: relative; display: inline-block;
+  }
+  .ic-toggle::before {
+    content: ''; position: absolute; width: 10px; height: 10px; border-radius: 50%;
+    background: #fff; top: 3px; left: 15px;
+  }
+  .ic-grip {
+    display: inline-block;
+    width: 4px; height: 28px;
+    border-radius: 2px;
+    background: var(--accent);
+    box-shadow: 0 0 6px rgba(56,189,248,.4);
+  }
+  .howto-mini-tag {
+    display: inline-block;
+    font-family: 'Bitter', serif;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 7px;
+    background: var(--bg);
+  }
+  .howto-mini-tag.blue { color: var(--accent);  border-color: rgba(56,189,248,.4); }
+  .howto-mini-tag.red  { color: var(--barrier); border-color: rgba(239,68,68,.4); }
+  /* Tip callout at the bottom */
+  .howto-tips {
+    background: rgba(56,189,248,.06);
+    border: 1px solid rgba(56,189,248,.25);
+    border-radius: 12px;
+    padding: 18px 22px;
+    max-width: 1100px;
+    margin-bottom: 32px;
+  }
+  .howto-tips h3 {
+    font-family: 'Bitter', serif;
+    font-size: 13px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: 10px;
+  }
+  .howto-tips ul {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .howto-tips li {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+    padding-left: 18px;
+    position: relative;
+  }
+  .howto-tips li::before {
+    content: '›';
+    position: absolute;
+    left: 4px;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .howto-tips li b { color: var(--text); font-weight: 600; }
+
   /* ══════════════════════════════════════════
      WORKSPACE
   ══════════════════════════════════════════ */
@@ -840,6 +974,7 @@
   <div class="nav-links">
     <button class="nav-link active" onclick="showPage('map')">Map</button>
     <button class="nav-link" onclick="showPage('home')">Home</button>
+    <button class="nav-link" onclick="showPage('howto')">How to Use</button>
     <button class="nav-link" onclick="showPage('details')">Details</button>
     <button class="nav-link" onclick="showPage('contributors')">Contributors</button>
   </div>
@@ -860,9 +995,99 @@
     <div class="info-card-page"><div class="card-num">1,144</div><div class="card-label">Downstream Paths</div></div>
     <div class="info-card-page"><div class="card-num">10</div><div class="card-label">Countries</div></div>
   </div>
-  <h2 style="font-size:18px;margin-bottom:10px;">How to Use</h2>
+  <p class="lead">New here? See the <a href="javascript:void(0)" onclick="showPage('howto')" style="color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent);">How to Use</a> page for a quick tour of every feature.</p>
+</div>
+
+<!-- ═══════ HOW TO USE ═══════ -->
+<div class="page-overlay" id="page-howto">
+  <button class="close-page" onclick="showPage('map')">✕ Close</button>
+  <h2>How to Use</h2>
   <div class="divider"></div>
-  <p class="lead">Use the Reservoir / Barrier / Both tabs to switch data layers. Search by ID to find a specific site. Click any marker to load its watershed and downstream path.</p>
+  <p class="lead">A quick tour of the main interactions. Everything happens around the map and the left sidebar.</p>
+
+  <div class="howto-grid">
+
+    <div class="howto-card">
+      <div class="howto-step">Step 1</div>
+      <div class="howto-title">Choose what to show</div>
+      <div class="howto-icon-row">
+        <span class="ic-dot-blue"></span>
+        <span class="howto-mini-tag blue">Reservoirs</span>
+        <span class="ic-dot-red"></span>
+        <span class="howto-mini-tag red">Barriers</span>
+      </div>
+      <div class="howto-body">Use the two checkboxes at the top of the sidebar to toggle <b>Reservoirs</b> (blue circles) and <b>Barriers</b> (red diamonds) on the map. The count next to each label shows how many features are loaded.</div>
+    </div>
+
+    <div class="howto-card">
+      <div class="howto-step">Step 2</div>
+      <div class="howto-title">Find a site by ID</div>
+      <div class="howto-body">Type any part of a numeric ID into the <b>Search</b> field. Matching results appear below the box — click one to fly to that location and load its data. You can also click a marker directly on the map.</div>
+    </div>
+
+    <div class="howto-card">
+      <div class="howto-step">Step 3</div>
+      <div class="howto-title">Explore watershed &amp; downstream</div>
+      <div class="howto-icon-row">
+        <span class="ic-swatch-green"></span>
+        <span class="howto-mini-tag" style="color:var(--accent2);border-color:rgba(74,222,128,.4)">Watershed</span>
+        <span class="ic-swatch-org"></span>
+        <span class="howto-mini-tag" style="color:var(--accent3);border-color:rgba(251,146,60,.4)">Downstream</span>
+      </div>
+      <div class="howto-body">When you select a feature, its <b>watershed boundary</b> (green) and <b>downstream river path</b> (orange) are drawn on the map. Toggle either layer with the switches in the sidebar.</div>
+    </div>
+
+    <div class="howto-card">
+      <div class="howto-step">Step 4</div>
+      <div class="howto-title">Read the info card</div>
+      <div class="howto-body">Below the toggles, the info card shows latitude, longitude, country, basin, and areal impact for the selected feature. Click <b>✕ Clear</b> to deselect and remove the watershed/downstream layers.</div>
+    </div>
+
+    <div class="howto-card">
+      <div class="howto-step">Step 5</div>
+      <div class="howto-title">View the time series</div>
+      <div class="howto-body">Selected features include monthly time series. Pick a metric — <b>Surface Runoff</b>, <b>Sub-Surface Runoff</b>, or <b>Precipitation</b> — from the dropdown. Runoff is shown as a line; precipitation as vertical bars. Hover for the date and value.</div>
+    </div>
+
+    <div class="howto-card">
+      <div class="howto-step">Step 6</div>
+      <div class="howto-title">Expand the chart</div>
+      <div class="howto-body">Click <kbd>⛶ Expand</kbd> on the time series card to open a large, fullscreen view with more date ticks and a richer tooltip. Close with the <kbd>✕</kbd> button, the <kbd>Esc</kbd> key, or by clicking outside the box.</div>
+    </div>
+
+    <div class="howto-card">
+      <div class="howto-step">Step 7</div>
+      <div class="howto-title">Switch basemap &amp; opacity</div>
+      <div class="howto-body">The <b>≡ Layers</b> button at the bottom-right of the map opens a panel where you can pick a basemap (Dark, Light, Satellite, Topo, Street, Terrain) and adjust the opacity of the watershed and downstream overlays.</div>
+    </div>
+
+    <div class="howto-card">
+      <div class="howto-step">Step 8</div>
+      <div class="howto-title">Resize the sidebar</div>
+      <div class="howto-icon-row">
+        <span class="ic-grip"></span>
+        <span class="howto-mini-tag">Drag to resize</span>
+      </div>
+      <div class="howto-body">Drag the vertical grip on the right edge of the sidebar to make it wider or narrower. <b>Double-click</b> it to reset to the default width. On small screens the sidebar becomes an overlay drawer.</div>
+    </div>
+
+    <div class="howto-card">
+      <div class="howto-step">Step 9</div>
+      <div class="howto-title">Collapse the sidebar</div>
+      <div class="howto-body">Click the small <kbd>‹</kbd> tab on the right edge of the sidebar to collapse it for a full-screen map view. Click <kbd>›</kbd> to bring it back.</div>
+    </div>
+
+  </div>
+
+  <div class="howto-tips">
+    <h3>Tips</h3>
+    <ul>
+      <li>Marker <b>tooltips</b> on hover show the ID and coordinates without selecting the feature.</li>
+      <li>Changing the metric in either the small or large time series view <b>syncs both</b>.</li>
+      <li>Selected features stay highlighted on the map (slightly larger and brighter) so you can still see context while the layers load.</li>
+      <li>Time series chart type changes per metric: <b>line</b> for runoff, <b>bars</b> for precipitation.</li>
+    </ul>
+  </div>
 </div>
 
 <!-- ═══════ DETAILS ═══════ -->
@@ -1122,13 +1347,15 @@ var BARRIER_FILL  = 'rgba(239,68,68,0.12)';
 //  Nav
 // ─────────────────────────────────────────────────
 function showPage(name) {
-  ['home','details','contributors'].forEach(function(p){
+  ['home','howto','details','contributors'].forEach(function(p){
     document.getElementById('page-'+p).classList.toggle('visible', p===name);
   });
   document.querySelectorAll('.nav-link').forEach(function(el){
+    var label = el.textContent.toLowerCase().trim();
     el.classList.toggle('active',
-      el.textContent.toLowerCase().trim()===name ||
-      (name==='map' && el.textContent.trim()==='Map'));
+      label === name ||
+      (name === 'howto' && label === 'how to use') ||
+      (name === 'map'   && label === 'map'));
   });
   if (name==='map') setTimeout(function(){ map.invalidateSize(); },50);
 }
