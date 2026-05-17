@@ -1188,12 +1188,18 @@ function updateOpacity(type,val){
 function makeIcon(type, active) {
   var c   = active ? (type==='barrier' ? BARRIER_COLOR : '#4ade80')
                    : (type==='barrier' ? BARRIER_COLOR : '#38bdf8');
-  var sz  = active ? 9 : 6;
+  var sz  = active ? 9 : 6;           // visible marker size
   var op  = active ? 1 : 0.75;
-  var shape = type==='barrier'
+  var hit = active ? 22 : 18;         // total hit area (transparent box around the dot)
+  var visible = type==='barrier'
     ? '<div style="width:'+sz+'px;height:'+sz+'px;background:'+c+';transform:rotate(45deg);box-shadow:0 0 5px '+c+';opacity:'+op+'"></div>'
     : '<div style="width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:'+c+';box-shadow:0 0 5px '+c+';opacity:'+op+'"></div>';
-  return L.divIcon({ className:'', html:shape, iconSize:[sz,sz], iconAnchor:[sz/2,sz/2] });
+  // Outer div: hit area, transparent. Inner div: the visible dot, centered.
+  var html =
+    '<div style="width:'+hit+'px;height:'+hit+'px;display:flex;align-items:center;justify-content:center;cursor:pointer;">'+
+      visible+
+    '</div>';
+  return L.divIcon({ className:'', html:html, iconSize:[hit,hit], iconAnchor:[hit/2,hit/2] });
 }
 
 // ─────────────────────────────────────────────────
