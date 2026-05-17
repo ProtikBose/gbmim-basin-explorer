@@ -966,6 +966,13 @@
   input[type=range].op-slider::-webkit-slider-thumb { -webkit-appearance:none; width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid var(--surface); box-shadow:0 0 4px var(--accent); }
   input[type=range].op-slider::-moz-range-thumb { width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid var(--surface); }
 
+  /* Borders section in the Layers panel */
+  .borders-row { display:flex; align-items:center; gap:7px; }
+  .borders-label { font-size:10px; color:var(--muted); white-space:nowrap; min-width:66px; }
+  .borders-val { font-family:'Bitter',serif; font-size:10px; font-weight:600; color:var(--muted-accent, var(--muted)); min-width:28px; text-align:right; }
+  .borders-row.active .borders-val { color: #94a3b8; }
+  [data-theme="light"] .borders-row.active .borders-val { color: #475569; }
+
   .leaflet-container { background: var(--map-bg); }
   .leaflet-control-zoom a { background:var(--surface)!important; color:var(--text)!important; border-color:var(--border)!important; font-size:14px!important; }
   .leaflet-control-zoom a:hover { background:var(--surface2)!important; }
@@ -1270,6 +1277,15 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
+        <div class="layer-toggle-row">
+          <div class="layer-toggle-label">
+            <div class="layer-dot" style="background:#94a3b8"></div>Country Borders
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-borders" checked onchange="updateCountryBorders()"/>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
       </div>
 
       <div class="panel-spacer"></div>
@@ -1327,6 +1343,10 @@
           <div class="leg-swatch" style="background:var(--accent3)"></div>
           <span>Downstream path</span>
         </div>
+        <div class="leg-row">
+          <div class="leg-swatch" style="background:#94a3b8"></div>
+          <span>Country border</span>
+        </div>
       </div>
 
     </div><!-- /panel-scroll -->
@@ -1355,6 +1375,19 @@
           <span class="opacity-label" style="color:var(--accent3)">Downstream</span>
           <input type="range" class="op-slider" id="op-downstream" min="0" max="100" value="85" oninput="updateOpacity('downstream',this.value)"/>
           <span class="opacity-val" id="op-downstream-val">85%</span>
+        </div>
+      </div>
+      <div>
+        <div class="mc-section-title">&#10070; Country Borders</div>
+        <div class="borders-row active" id="borders-thickness-row">
+          <span class="borders-label">Thickness</span>
+          <input type="range" class="op-slider" id="border-weight" min="0" max="50" value="15" oninput="updateBorderWeight(this.value)"/>
+          <span class="borders-val" id="border-weight-val">1.5</span>
+        </div>
+        <div class="borders-row" style="margin-top:7px;">
+          <span class="borders-label">Opacity</span>
+          <input type="range" class="op-slider" id="border-opacity" min="0" max="100" value="70" oninput="updateBorderOpacity(this.value)"/>
+          <span class="borders-val" id="border-opacity-val">70%</span>
         </div>
       </div>
     </div>
@@ -1467,6 +1500,8 @@ function applyTheme(theme) {
       if (l.setStyle) l.setStyle({ color: getAccent3(), fillColor: getAccent3() });
     });
   }
+  // Country borders: swap to theme-appropriate grey
+  if (countryBordersLayer) countryBordersLayer.setStyle({ color: getBorderColor() });
   // Re-render any time series so the inline SVG color values pick up new accents
   if (tsData && activeId) {
     renderTimeSeries();
@@ -1536,6 +1571,9 @@ function setBasemap(bm, userInitiated) {
 })();
 setBasemap(BASEMAPS[0], /*userInitiated=*/false);
 
+// Kick off the country borders overlay (toggle defaults to on)
+loadCountryBorders();
+
 function toggleMapControls(){
   var p=document.getElementById('map-control-panel'),b=document.getElementById('map-control-toggle');
   var o=p.classList.toggle('open'); b.classList.toggle('open',o);
@@ -1547,6 +1585,79 @@ function updateOpacity(type,val){
   document.getElementById('op-'+type+'-val').textContent=val+'%';
   if(type==='watershed'){ wsOpacity=f; if(watershedLayer) watershedLayer.setStyle({fillOpacity:f*0.8,opacity:Math.min(f*6,0.9)}); }
   else { dsOpacity=f; if(downstreamLayer) downstreamLayer.setStyle({opacity:f}); }
+}
+
+// ─────────────────────────────────────────────────
+//  Country borders overlay (Natural Earth 50m vectors)
+// ─────────────────────────────────────────────────
+var countryBordersLayer = null;
+var bordersData = null;
+var borderWeight  = 1.5;
+var borderOpacity = 0.7;
+
+// Theme-aware border color: light grey on dark, slate on light
+function getBorderColor() {
+  return getCurrentTheme() === 'light' ? '#475569' : '#94a3b8';
+}
+
+function loadCountryBorders() {
+  // Load once, then reuse
+  if (bordersData) { applyCountryBorders(); return; }
+  fetch('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson')
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(data) {
+      if (!data) return;
+      bordersData = data;
+      applyCountryBorders();
+    })
+    .catch(function(e) {
+      console.warn('Country borders failed to load:', e);
+    });
+}
+
+function applyCountryBorders() {
+  if (!bordersData) return;
+  if (countryBordersLayer) { map.removeLayer(countryBordersLayer); countryBordersLayer = null; }
+  countryBordersLayer = L.geoJSON(bordersData, {
+    style: {
+      color:   getBorderColor(),
+      weight:  borderWeight,
+      opacity: borderOpacity,
+      fill:    false
+    },
+    interactive: false   // pass clicks through to markers underneath
+  }).addTo(map);
+  // Sit above the basemap, below the selection overlays (watershed/downstream)
+  if (countryBordersLayer.bringToBack) countryBordersLayer.bringToBack();
+  // …then nudge the basemap further back so borders are visible above it
+  if (currentTileLayer && currentTileLayer.bringToBack) currentTileLayer.bringToBack();
+}
+
+function updateCountryBorders() {
+  var on = document.getElementById('toggle-borders').checked;
+  // Reflect enabled/disabled visual state on the thickness/opacity rows
+  document.querySelectorAll('.borders-row').forEach(function(r) {
+    r.classList.toggle('active', on);
+  });
+  if (on) {
+    loadCountryBorders();
+  } else if (countryBordersLayer) {
+    map.removeLayer(countryBordersLayer);
+    countryBordersLayer = null;
+  }
+}
+
+function updateBorderWeight(val) {
+  // Slider range 0-50 maps to weight 0.0-5.0 (0.1 steps)
+  borderWeight = val / 10;
+  document.getElementById('border-weight-val').textContent = borderWeight.toFixed(1);
+  if (countryBordersLayer) countryBordersLayer.setStyle({ weight: borderWeight });
+}
+
+function updateBorderOpacity(val) {
+  borderOpacity = val / 100;
+  document.getElementById('border-opacity-val').textContent = val + '%';
+  if (countryBordersLayer) countryBordersLayer.setStyle({ opacity: borderOpacity });
 }
 
 // ─────────────────────────────────────────────────
