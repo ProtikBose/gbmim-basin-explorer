@@ -16,14 +16,21 @@
     --accent:     #38bdf8;   /* reservoir — sky blue  */
     --accent2:    #4ade80;   /* watershed  — green    */
     --accent3:    #fb923c;   /* downstream — orange   */
-    --barrier:    #f472b6;   /* barrier    — pink     */
+    --barrier:    #ef4444;   /* barrier    — red      */
     --text:       #e2e8f0;
     --muted:      #64748b;
     --panel-w:    400px;
+    --panel-min:  260px;
+    --panel-max:  640px;
     --nav-h:      56px;
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    width: 100%;
+  }
 
   body {
     background: var(--bg);
@@ -31,13 +38,14 @@
     font-family: 'Inter', sans-serif;
     font-weight: 300;
     height: 100vh;
+    height: 100dvh; /* better for mobile browsers */
     display: flex;
     flex-direction: column;
     overflow: hidden;
   }
 
   /* ══════════════════════════════════════════
-     NAV BAR — taller, centred links
+     NAV BAR — responsive
   ══════════════════════════════════════════ */
   nav {
     height: var(--nav-h);
@@ -45,14 +53,13 @@
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
-    justify-content: center;   /* centre everything */
+    justify-content: center;
     padding: 0 28px;
     flex-shrink: 0;
     z-index: 1000;
     position: relative;
   }
 
-  /* title pinned left */
   .nav-title {
     position: absolute;
     left: 28px;
@@ -65,7 +72,6 @@
   }
   .nav-title span { color: var(--accent); }
 
-  /* centred links */
   .nav-links {
     display: flex;
     align-items: center;
@@ -88,7 +94,6 @@
   .nav-link:hover  { color: var(--text);   background: var(--surface2); }
   .nav-link.active { color: var(--accent); background: rgba(56,189,248,.09); }
 
-  /* badge pinned right */
   .nav-right {
     position: absolute;
     right: 28px;
@@ -108,6 +113,19 @@
     white-space: nowrap;
   }
 
+  /* mobile nav adjustments */
+  @media (max-width: 900px) {
+    nav { padding: 0 12px; }
+    .nav-title { left: 12px; font-size: 14px; }
+    .nav-right { right: 12px; }
+    .nav-badge { display: none; }
+    .nav-link { padding: 6px 10px; font-size: 11px; letter-spacing: .04em; }
+  }
+  @media (max-width: 560px) {
+    .nav-title span { display: none; }
+    .nav-link { padding: 6px 8px; font-size: 10px; }
+  }
+
   /* ══════════════════════════════════════════
      PAGE OVERLAYS
   ══════════════════════════════════════════ */
@@ -121,12 +139,15 @@
     padding: 48px 64px;
     animation: fadeIn 0.2s ease;
   }
+  @media (max-width: 700px) {
+    .page-overlay { padding: 28px 20px; }
+  }
   .page-overlay.visible { display: block; }
   @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
   .page-overlay h2 { font-family:'Bitter',serif; font-size:28px; font-weight:700; color:var(--text); margin-bottom:6px; }
   .page-overlay .lead { font-size:14px; color:var(--muted); margin-bottom:32px; line-height:1.7; max-width:680px; }
   .page-overlay .divider { width:48px; height:3px; background:var(--accent); border-radius:2px; margin-bottom:28px; }
-  .card-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:16px; max-width:900px; margin-bottom:40px; }
+  .card-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:16px; max-width:900px; margin-bottom:40px; }
   .info-card-page { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:20px; }
   .info-card-page .card-num { font-family:'Bitter',serif; font-size:28px; font-weight:700; color:var(--accent); line-height:1; margin-bottom:4px; }
   .info-card-page .card-label { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }
@@ -141,20 +162,85 @@
   /* ══════════════════════════════════════════
      WORKSPACE
   ══════════════════════════════════════════ */
-  .workspace { display:flex; flex:1; overflow:hidden; position:relative; }
+  .workspace {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    min-height: 0;
+  }
 
   /* ══════════════════════════════════════════
-     SIDE PANEL
+     SIDE PANEL — resizable, scrollable
   ══════════════════════════════════════════ */
   #panel {
     width: var(--panel-w);
     background: var(--surface);
     border-right: 1px solid var(--border);
-    display: flex; flex-direction: column;
-    flex-shrink: 0; overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow: hidden;
     transition: width 0.3s ease;
+    position: relative;
+    min-height: 0;
   }
-  #panel.collapsed { width: 0; }
+  #panel.collapsed { width: 0 !important; }
+  /* Disable transition during active drag for snappy feedback */
+  #panel.resizing { transition: none; }
+
+  /* Inner scroll container — scrolls when content overflows vertically */
+  .panel-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .panel-scroll::-webkit-scrollbar { width: 6px; }
+  .panel-scroll::-webkit-scrollbar-track { background: transparent; }
+  .panel-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .panel-scroll::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* Resize handle on the right edge of the panel */
+  #panel-resize {
+    position: absolute;
+    top: 0;
+    right: -6px;          /* sits half outside so the hit area straddles the border */
+    width: 12px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 600;
+    background: transparent;
+    transition: background .15s;
+    touch-action: none;   /* let JS handle touch dragging instead of scrolling */
+  }
+  /* Visible grip indicator (a vertical bar of dots, centered) */
+  #panel-resize::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 4px;
+    height: 36px;
+    border-radius: 3px;
+    background: var(--border);
+    opacity: .6;
+    transition: background .15s, opacity .15s;
+    pointer-events: none;
+  }
+  #panel-resize:hover::before,
+  #panel-resize.dragging::before {
+    background: var(--accent);
+    opacity: 1;
+  }
+  #panel-resize:hover,
+  #panel-resize.dragging {
+    background: rgba(56,189,248,.15);
+  }
+  #panel.collapsed #panel-resize { display: none; }
 
   .panel-header {
     padding: 11px 14px 9px;
@@ -228,14 +314,14 @@
   .layer-toggle-row { display:flex; align-items:center; justify-content:space-between; }
   .layer-toggle-label { display:flex; align-items:center; gap:7px; font-size:11px; color:var(--muted); letter-spacing:.04em; }
   .layer-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
-  .toggle-switch { position:relative; width:30px; height:17px; }
+  .toggle-switch { position:relative; width:30px; height:17px; flex-shrink:0; }
   .toggle-switch input { opacity:0; width:0; height:0; }
   .toggle-slider { position:absolute; inset:0; background:var(--border); border-radius:17px; cursor:pointer; transition:background .2s; }
   .toggle-slider::before { content:''; position:absolute; width:11px; height:11px; left:3px; top:3px; background:#fff; border-radius:50%; transition:transform .2s; }
   .toggle-switch input:checked + .toggle-slider { background:var(--accent); }
   .toggle-switch input:checked + .toggle-slider::before { transform:translateX(13px); }
 
-  /* ── Search (top of list, no full list below) ── */
+  /* ── Search ── */
   .search-box { padding:8px 10px; border-bottom:1px solid var(--border); flex-shrink:0; }
   .search-box input {
     width:100%; background:var(--bg); border:1px solid var(--border); border-radius:6px;
@@ -245,7 +331,7 @@
   .search-box input:focus { border-color:var(--accent); }
   .search-hint { font-size:10px; color:var(--muted); margin-top:4px; padding:0 2px; }
 
-  /* ── Search results (shown only when query exists) ── */
+  /* ── Search results ── */
   #search-results {
     flex-shrink: 0;
     max-height: 200px;
@@ -266,7 +352,7 @@
   }
   .res-item:hover { background:rgba(56,189,248,.06); }
   .res-item.active { background:rgba(56,189,248,.1); border-left-color:var(--accent); }
-  .res-item.barrier-item.active { background:rgba(244,114,182,.1); border-left-color:var(--barrier); }
+  .res-item.barrier-item.active { background:rgba(239,68,68,.1); border-left-color:var(--barrier); }
 
   .res-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
   .res-dot.dot-reservoir { background:var(--accent);  box-shadow:0 0 4px var(--accent); }
@@ -297,9 +383,8 @@
     transition: color .15s, border-color .15s;
   }
   .ic-clear:hover { color: var(--accent3); border-color: var(--accent3); }
-  .ic-row { display:flex; justify-content:space-between; margin-bottom:2px; }
-  .ic-val { color:var(--text); }
-  .ic-val { color:var(--text); }
+  .ic-row { display:flex; justify-content:space-between; margin-bottom:2px; gap:8px; }
+  .ic-val { color:var(--text); text-align:right; word-break:break-word; }
   .badge { display:inline-block; font-size:10px; padding:1px 6px; border-radius:4px; margin-top:5px; font-family:'Bitter',serif; font-weight:600; }
   .badge-ws      { background:rgba(74,222,128,.12);   color:var(--accent2); border:1px solid var(--accent2); }
   .badge-ds      { background:rgba(251,146,60,.12);   color:var(--accent3); border:1px solid var(--accent3); }
@@ -314,7 +399,7 @@
     border: 1px solid var(--border);
     border-radius: 8px;
     flex-shrink: 0;
-    display: none;            /* shown only when a feature is selected */
+    display: none;
     transition: border-color .3s;
   }
   #ts-card.active         { border-color: var(--accent);  display: block; }
@@ -343,6 +428,8 @@
     display: flex; justify-content: space-between;
     font-size: 10px; color: var(--muted);
     margin-bottom: 4px;
+    flex-wrap: wrap;
+    gap: 6px;
   }
   .ts-stat-val {
     font-family: 'Bitter', serif; font-weight: 600;
@@ -383,12 +470,252 @@
     display: flex; justify-content: space-between;
     font-size: 9px; color: var(--muted);
     margin-top: 3px;
-    padding-left: 36px;  /* align under plot (yaxis 32px + gap 4px) */
+    padding-left: 36px;
     font-family: 'Bitter', serif;
   }
   .ts-hover-line  { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 2; opacity: 0; }
   .ts-hover-dot   { fill: var(--accent); stroke: var(--bg); stroke-width: 1.5; opacity: 0; }
   #ts-card.barrier-active .ts-hover-dot { fill: var(--barrier); }
+
+  /* Expand button (top-right of head, next to metric selector) */
+  .ts-expand {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--muted);
+    font-family: 'Bitter', serif;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    padding: 2px 6px;
+    cursor: pointer;
+    outline: none;
+    margin-left: 4px;
+    transition: color .15s, border-color .15s;
+  }
+  .ts-expand:hover, .ts-expand:focus { color: var(--text); border-color: var(--muted); }
+  .ts-head-right { display: flex; align-items: center; gap: 4px; }
+
+  /* ── Time series modal ── */
+  #ts-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(11, 15, 26, 0.75);
+    backdrop-filter: blur(4px);
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    animation: fadeIn 0.18s ease;
+  }
+  #ts-modal.visible { display: flex; }
+  .ts-modal-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 1000px;
+    max-height: calc(100dvh - 48px);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,.6);
+    overflow: hidden;
+  }
+  .ts-modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .ts-modal-title {
+    font-family: 'Bitter', serif;
+    font-size: 14px; font-weight: 700;
+    letter-spacing: .04em;
+    color: var(--accent);
+  }
+  #ts-modal.barrier .ts-modal-title { color: var(--barrier); }
+  .ts-modal-sub {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px; font-weight: 400;
+    color: var(--muted);
+    margin-top: 4px;
+    letter-spacing: 0;
+    text-transform: none;
+    display: block;
+  }
+  .ts-modal-sub b {
+    color: var(--text);
+    font-weight: 600;
+  }
+  .ts-modal-sub .sub-sep {
+    margin: 0 8px;
+    color: var(--border);
+  }
+  .ts-modal-controls { display: flex; align-items: center; gap: 8px; }
+  .ts-modal-metric {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'Bitter', serif;
+    font-size: 11px; font-weight: 600;
+    padding: 4px 8px;
+    cursor: pointer;
+    outline: none;
+  }
+  .ts-modal-metric:hover { border-color: var(--muted); }
+  .ts-modal-close {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    padding: 4px 10px;
+    cursor: pointer;
+    font-family: 'Bitter', serif;
+    font-size: 12px;
+    transition: color .15s, border-color .15s;
+  }
+  .ts-modal-close:hover { color: var(--accent3); border-color: var(--accent3); }
+
+  .ts-modal-body {
+    padding: 18px 22px 22px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+  }
+  .ts-modal-stats {
+    display: flex;
+    gap: 24px;
+    font-size: 12px;
+    color: var(--muted);
+    flex-wrap: wrap;
+  }
+  .ts-modal-stats .ts-stat-val {
+    font-family: 'Bitter', serif; font-weight: 700;
+    color: var(--text);
+    font-size: 14px;
+    margin-left: 6px;
+  }
+  .ts-modal-chart-wrap {
+    position: relative;
+    height: clamp(260px, 50vh, 480px);
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    min-height: 0;
+  }
+  .ts-modal-yaxis {
+    width: 56px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-end;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'Bitter', serif;
+    font-weight: 600;
+    text-align: right;
+    padding: 2px 0;
+  }
+  .ts-modal-yaxis span { line-height: 1; }
+  .ts-modal-plot {
+    flex: 1;
+    position: relative;
+    min-width: 0;
+    border-left: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .ts-modal-plot svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .ts-modal-axis-x {
+    position: relative;
+    height: 18px;
+    margin-top: 4px;
+    padding-left: 64px;  /* yaxis (56) + gap (8) */
+    font-family: 'Bitter', serif;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  /* Inner track that holds the ticks — sits in the same column as the plot */
+  .ts-modal-axis-x .x-track {
+    position: relative;
+    height: 100%;
+    width: 100%;
+  }
+  .ts-modal-axis-x .x-tick {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+  /* First tick: don't pull off the left edge */
+  .ts-modal-axis-x .x-tick.x-first { transform: translateX(0); }
+  /* Last tick: don't push past the right edge */
+  .ts-modal-axis-x .x-tick.x-last  { transform: translateX(-100%); }
+  /* On narrow screens, shrink tick text */
+  @media (max-width: 600px) {
+    .ts-modal-axis-x { font-size: 9px; }
+  }
+  /* Tooltip — left-align text, larger, with explicit field labels */
+  .ts-modal-tooltip {
+    position: absolute;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    text-align: left;
+    color: var(--text);
+    pointer-events: none;
+    white-space: nowrap;
+    transform: translate(-50%, calc(-100% - 12px));
+    opacity: 0;
+    transition: opacity .12s;
+    font-family: 'Inter', sans-serif;
+    box-shadow: 0 4px 14px rgba(0,0,0,.5);
+    z-index: 2;
+    min-width: 160px;
+  }
+  .ts-modal-tooltip .tt-date {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'Bitter', serif;
+    font-weight: 600;
+    margin-bottom: 4px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .ts-modal-tooltip .tt-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+  }
+  .ts-modal-tooltip .tt-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .ts-modal-tooltip .tt-label {
+    color: var(--muted);
+  }
+  .ts-modal-tooltip .tt-val {
+    font-family: 'Bitter', serif;
+    font-weight: 700;
+    color: var(--text);
+    margin-left: auto;
+  }
+
+  @media (max-width: 600px) {
+    #ts-modal { padding: 12px; }
+    .ts-modal-head { padding: 12px 14px; }
+    .ts-modal-body { padding: 14px; }
+    .ts-modal-stats { gap: 14px; }
+  }
   .ts-tooltip {
     position: absolute;
     background: var(--surface2);
@@ -405,13 +732,6 @@
     font-family: 'Bitter', serif;
     box-shadow: 0 2px 8px rgba(0,0,0,.4);
   }
-  .ts-placeholder-note {
-    font-size: 9px; color: var(--muted);
-    font-style: italic;
-    margin-top: 4px;
-    text-align: right;
-    opacity: .7;
-  }
 
   /* ── Legend ── */
   #legend { margin:0 10px 10px; padding:9px 12px; background:var(--bg); border:1px solid var(--border); border-radius:8px; font-size:11px; flex-shrink:0; }
@@ -420,19 +740,18 @@
   .leg-swatch { width:20px; height:3px; border-radius:2px; flex-shrink:0; }
   .leg-circle { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
 
-  /* spacer to push legend/info to bottom */
-  .panel-spacer { flex: 1; }
+  .panel-spacer { flex: 1; min-height: 8px; }
 
   /* ══════════════════════════════════════════
      MAP
   ══════════════════════════════════════════ */
-  #map { flex:1; z-index:1; }
+  #map { flex:1; z-index:1; min-width: 0; }
 
   /* map controls */
-  #map-controls { position:absolute; bottom:28px; right:10px; z-index:500; display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+  #map-controls { position:absolute; bottom:28px; right:10px; z-index:500; display:flex; flex-direction:column; align-items:flex-end; gap:6px; max-width: calc(100% - 20px); }
   #map-control-toggle { background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:5px 11px; font-family:'Bitter',serif; font-size:11px; font-weight:600; color:var(--muted); cursor:pointer; letter-spacing:.05em; text-transform:uppercase; transition:color .15s,border-color .15s; white-space:nowrap; }
   #map-control-toggle:hover, #map-control-toggle.open { color:var(--accent); border-color:var(--accent); }
-  #map-control-panel { background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:12px 14px; width:214px; display:none; flex-direction:column; gap:12px; box-shadow:0 8px 24px rgba(0,0,0,.5); }
+  #map-control-panel { background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:12px 14px; width:214px; max-width: 100%; display:none; flex-direction:column; gap:12px; box-shadow:0 8px 24px rgba(0,0,0,.5); }
   #map-control-panel.open { display:flex; }
   .mc-section-title { font-family:'Bitter',serif; font-size:10px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
   .basemap-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; }
@@ -458,9 +777,59 @@
   #spinner { position:fixed; bottom:16px; right:16px; background:var(--surface); border:1px solid var(--accent); border-radius:8px; padding:6px 14px; font-family:'Bitter',serif; font-size:12px; color:var(--accent); display:none; z-index:9999; animation:pulse 1.2s ease-in-out infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
 
-  #toggle-panel { position:absolute; left:var(--panel-w); top:50%; transform:translateY(-50%); z-index:500; background:var(--surface); border:1px solid var(--border); border-left:none; border-radius:0 5px 5px 0; width:14px; height:40px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:9px; transition:left .3s,color .2s; }
-  #toggle-panel:hover { color:var(--accent); }
-  #toggle-panel.collapsed { left:0; }
+  #toggle-panel {
+    position: absolute;
+    left: var(--panel-w);
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 500;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: none;
+    border-radius: 0 5px 5px 0;
+    width: 16px;
+    height: 44px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: 10px;
+    transition: left .3s, color .2s;
+  }
+  #toggle-panel:hover { color: var(--accent); }
+  #toggle-panel.collapsed { left: 0; }
+  /* Disable transition while resizing so the button follows the handle smoothly */
+  .resizing #toggle-panel { transition: color .2s; }
+
+  /* ══════════════════════════════════════════
+     RESPONSIVE — narrow viewports
+     On small screens, panel becomes an overlay drawer
+  ══════════════════════════════════════════ */
+  @media (max-width: 768px) {
+    :root { --panel-w: 88vw; --panel-max: 95vw; }
+    #panel {
+      position: absolute;
+      top: 0; left: 0; bottom: 0;
+      z-index: 700;
+      box-shadow: 4px 0 20px rgba(0,0,0,.5);
+      max-width: 95vw;
+    }
+    #toggle-panel {
+      left: var(--panel-w);
+      max-left: 95vw;
+    }
+    /* Bigger hit area + more visible grip on touch */
+    #panel-resize {
+      width: 20px;
+      right: -10px;
+    }
+    #panel-resize::before {
+      width: 5px;
+      height: 44px;
+      opacity: .8;
+    }
+  }
 </style>
 </head>
 <body>
@@ -536,123 +905,134 @@
 <div class="workspace">
   <div id="panel">
 
-    <div class="panel-header">
-      <h2>Map Layers</h2>
-    </div>
+    <!-- Everything inside this wrapper scrolls when content overflows vertically -->
+    <div class="panel-scroll">
 
-    <!-- Search by ID — always on top -->
-    <div class="search-box">
-      <input id="search" type="text" placeholder="Search by ID…" oninput="handleSearch()"/>
-    </div>
+      <div class="panel-header">
+        <h2>Map Layers</h2>
+      </div>
 
-    <!-- Search results (shown only when typing) -->
-    <div id="search-results"></div>
+      <!-- Search by ID — always on top -->
+      <div class="search-box">
+        <input id="search" type="text" placeholder="Search by ID…" oninput="handleSearch()"/>
+      </div>
 
-    <!-- Feature checkboxes -->
-    <div class="feature-checks">
-      <label class="feature-check-row">
-        <span class="fcheck check-res">
-          <input type="checkbox" id="chk-reservoir" checked onchange="updateMarkerVisibility()"/>
-          <span class="fcheck-box"></span>
-        </span>
-        <span class="fcheck-label">
-          <span class="fcheck-dot" style="background:var(--accent);box-shadow:0 0 4px var(--accent)"></span>
-          Reservoirs
-          <span class="fcheck-count" id="count-reservoir">0</span>
-        </span>
-      </label>
-      <label class="feature-check-row">
-        <span class="fcheck check-bar">
-          <input type="checkbox" id="chk-barrier" checked onchange="updateMarkerVisibility()"/>
-          <span class="fcheck-box"></span>
-        </span>
-        <span class="fcheck-label">
-          <span class="fcheck-diamond" style="background:var(--barrier);box-shadow:0 0 4px var(--barrier)"></span>
-          Barriers
-          <span class="fcheck-count" id="count-barrier">0</span>
-        </span>
-      </label>
-    </div>
+      <!-- Search results (shown only when typing) -->
+      <div id="search-results"></div>
 
-    <!-- Layer toggles -->
-    <div class="layer-toggles">
-      <div class="layer-toggle-row">
-        <div class="layer-toggle-label">
-          <div class="layer-dot" style="background:var(--accent2)"></div>Show Watershed
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="toggle-watershed" checked onchange="refreshLayers()"/>
-          <span class="toggle-slider"></span>
+      <!-- Feature checkboxes -->
+      <div class="feature-checks">
+        <label class="feature-check-row">
+          <span class="fcheck check-res">
+            <input type="checkbox" id="chk-reservoir" checked onchange="updateMarkerVisibility()"/>
+            <span class="fcheck-box"></span>
+          </span>
+          <span class="fcheck-label">
+            <span class="fcheck-dot" style="background:var(--accent);box-shadow:0 0 4px var(--accent)"></span>
+            Reservoirs
+            <span class="fcheck-count" id="count-reservoir">0</span>
+          </span>
+        </label>
+        <label class="feature-check-row">
+          <span class="fcheck check-bar">
+            <input type="checkbox" id="chk-barrier" checked onchange="updateMarkerVisibility()"/>
+            <span class="fcheck-box"></span>
+          </span>
+          <span class="fcheck-label">
+            <span class="fcheck-diamond" style="background:var(--barrier);box-shadow:0 0 4px var(--barrier)"></span>
+            Barriers
+            <span class="fcheck-count" id="count-barrier">0</span>
+          </span>
         </label>
       </div>
-      <div class="layer-toggle-row">
-        <div class="layer-toggle-label">
-          <div class="layer-dot" style="background:var(--accent3)"></div>Show Downstream
+
+      <!-- Layer toggles -->
+      <div class="layer-toggles">
+        <div class="layer-toggle-row">
+          <div class="layer-toggle-label">
+            <div class="layer-dot" style="background:var(--accent2)"></div>Show Watershed
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-watershed" checked onchange="refreshLayers()"/>
+            <span class="toggle-slider"></span>
+          </label>
         </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="toggle-downstream" checked onchange="refreshLayers()"/>
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-    </div>
-
-    <!-- Spacer -->
-    <div class="panel-spacer"></div>
-
-    <!-- Info card -->
-    <div id="info-card">
-      <div style="color:var(--muted);font-size:11px;padding-top:2px;">Select a feature to view details</div>
-    </div>
-
-    <!-- Time series card (per-feature, hidden until selection) -->
-    <div id="ts-card">
-      <div class="ts-head">
-        <span class="ts-title">Time Series</span>
-        <select class="ts-metric" id="ts-metric" onchange="renderTimeSeries()">
-          <option value="Surface">Surface Runoff</option>
-          <option value="Sub_Surface">Sub-Surface Runoff</option>
-          <option value="Precip">Precipitation</option>
-        </select>
-      </div>
-      <div class="ts-stats">
-        <span>min<span class="ts-stat-val" id="ts-min">–</span></span>
-        <span>mean<span class="ts-stat-val" id="ts-mean">–</span></span>
-        <span>max<span class="ts-stat-val" id="ts-max">–</span></span>
-      </div>
-      <div class="ts-chart-wrap" id="ts-chart-wrap">
-        <div class="ts-yaxis" id="ts-yaxis">
-          <span id="ts-y-max">–</span>
-          <span id="ts-y-mid">–</span>
-          <span id="ts-y-min">–</span>
-        </div>
-        <div class="ts-plot">
-          <svg id="ts-svg" viewBox="0 0 280 110" preserveAspectRatio="none"></svg>
-          <div class="ts-tooltip" id="ts-tooltip"></div>
+        <div class="layer-toggle-row">
+          <div class="layer-toggle-label">
+            <div class="layer-dot" style="background:var(--accent3)"></div>Show Downstream
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-downstream" checked onchange="refreshLayers()"/>
+            <span class="toggle-slider"></span>
+          </label>
         </div>
       </div>
-      <div class="ts-axis-x" id="ts-axis-x"><span>–</span><span>–</span></div>
-    </div>
 
-    <!-- Legend -->
-    <div id="legend">
-      <div class="leg-title">Legend</div>
-      <div class="leg-row">
-        <div class="leg-circle" style="background:var(--accent);box-shadow:0 0 4px var(--accent)"></div>
-        <span>Reservoir</span>
+      <!-- Spacer -->
+      <div class="panel-spacer"></div>
+
+      <!-- Info card -->
+      <div id="info-card">
+        <div style="color:var(--muted);font-size:11px;padding-top:2px;">Select a feature to view details</div>
       </div>
-      <div class="leg-row">
-        <div class="leg-circle" style="background:var(--barrier);box-shadow:0 0 4px var(--barrier)"></div>
-        <span>Barrier</span>
+
+      <!-- Time series card -->
+      <div id="ts-card">
+        <div class="ts-head">
+          <span class="ts-title">Time Series</span>
+          <span class="ts-head-right">
+            <select class="ts-metric" id="ts-metric" onchange="renderTimeSeries()">
+              <option value="Surface">Surface Runoff</option>
+              <option value="Sub_Surface">Sub-Surface Runoff</option>
+              <option value="Precip">Precipitation</option>
+            </select>
+            <button class="ts-expand" id="ts-expand-btn" onclick="openTimeSeriesModal()" title="Expand chart">⛶ Expand</button>
+          </span>
+        </div>
+        <div class="ts-stats">
+          <span>min<span class="ts-stat-val" id="ts-min">–</span></span>
+          <span>mean<span class="ts-stat-val" id="ts-mean">–</span></span>
+          <span>max<span class="ts-stat-val" id="ts-max">–</span></span>
+        </div>
+        <div class="ts-chart-wrap" id="ts-chart-wrap">
+          <div class="ts-yaxis" id="ts-yaxis">
+            <span id="ts-y-max">–</span>
+            <span id="ts-y-mid">–</span>
+            <span id="ts-y-min">–</span>
+          </div>
+          <div class="ts-plot">
+            <svg id="ts-svg" viewBox="0 0 280 110" preserveAspectRatio="none"></svg>
+            <div class="ts-tooltip" id="ts-tooltip"></div>
+          </div>
+        </div>
+        <div class="ts-axis-x" id="ts-axis-x"><span>–</span><span>–</span></div>
       </div>
-      <div class="leg-row">
-        <div class="leg-swatch" style="background:var(--accent2);height:8px;border-radius:2px;opacity:.6"></div>
-        <span>Watershed</span>
+
+      <!-- Legend -->
+      <div id="legend">
+        <div class="leg-title">Legend</div>
+        <div class="leg-row">
+          <div class="leg-circle" style="background:var(--accent);box-shadow:0 0 4px var(--accent)"></div>
+          <span>Reservoir</span>
+        </div>
+        <div class="leg-row">
+          <div class="leg-circle" style="background:var(--barrier);box-shadow:0 0 4px var(--barrier)"></div>
+          <span>Barrier</span>
+        </div>
+        <div class="leg-row">
+          <div class="leg-swatch" style="background:var(--accent2);height:8px;border-radius:2px;opacity:.6"></div>
+          <span>Watershed</span>
+        </div>
+        <div class="leg-row">
+          <div class="leg-swatch" style="background:var(--accent3)"></div>
+          <span>Downstream path</span>
+        </div>
       </div>
-      <div class="leg-row">
-        <div class="leg-swatch" style="background:var(--accent3)"></div>
-        <span>Downstream path</span>
-      </div>
-    </div>
+
+    </div><!-- /panel-scroll -->
+
+    <!-- Drag handle to resize sidebar width -->
+    <div id="panel-resize" title="Drag to resize"></div>
 
   </div><!-- /panel -->
 
@@ -684,17 +1064,59 @@
   </div>
 </div><!-- /workspace -->
 
+<!-- ═══════ TIME SERIES MODAL ═══════ -->
+<div id="ts-modal" onclick="handleModalBackdropClick(event)">
+  <div class="ts-modal-box" onclick="event.stopPropagation()">
+    <div class="ts-modal-head">
+      <div style="min-width:0;">
+        <div class="ts-modal-title" id="ts-modal-title">Time Series</div>
+        <div class="ts-modal-sub" id="ts-modal-sub"></div>
+      </div>
+      <div class="ts-modal-controls">
+        <select class="ts-modal-metric" id="ts-modal-metric" onchange="syncMetricFromModal()">
+          <option value="Surface">Surface Runoff</option>
+          <option value="Sub_Surface">Sub-Surface Runoff</option>
+          <option value="Precip">Precipitation</option>
+        </select>
+        <button class="ts-modal-close" onclick="closeTimeSeriesModal()">✕ Close</button>
+      </div>
+    </div>
+    <div class="ts-modal-body">
+      <div class="ts-modal-stats">
+        <span>min<span class="ts-stat-val" id="ts-modal-min">–</span></span>
+        <span>mean<span class="ts-stat-val" id="ts-modal-mean">–</span></span>
+        <span>max<span class="ts-stat-val" id="ts-modal-max">–</span></span>
+      </div>
+      <div class="ts-modal-chart-wrap">
+        <div class="ts-modal-yaxis">
+          <span id="ts-modal-y-max">–</span>
+          <span id="ts-modal-y-mid">–</span>
+          <span id="ts-modal-y-min">–</span>
+        </div>
+        <div class="ts-modal-plot" id="ts-modal-plot">
+          <svg id="ts-modal-svg" viewBox="0 0 800 380" preserveAspectRatio="none"></svg>
+          <div class="ts-modal-tooltip" id="ts-modal-tooltip"></div>
+        </div>
+      </div>
+      <div class="ts-modal-axis-x" id="ts-modal-axis-x"><span>–</span><span>–</span></div>
+    </div>
+  </div>
+</div>
+
 <div id="spinner">Loading…</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 // ─────────────────────────────────────────────────
-//  Data — injected by generate_map.py
+//  Data
 // ─────────────────────────────────────────────────
-// Coordinates loaded from JSON files at startup
 const GEOJSON_DIR = "geojson";
 var RESERVOIRS = [];
 var BARRIERS   = [];
+
+// Barrier color (kept in sync with CSS --barrier)
+var BARRIER_COLOR = '#ef4444';
+var BARRIER_FILL  = 'rgba(239,68,68,0.12)';
 
 // ─────────────────────────────────────────────────
 //  Nav
@@ -764,11 +1186,10 @@ function updateOpacity(type,val){
 //  Marker factories
 // ─────────────────────────────────────────────────
 function makeIcon(type, active) {
-  var c   = active ? (type==='barrier' ? '#f472b6' : '#4ade80')
-                   : (type==='barrier' ? '#f472b6' : '#38bdf8');
+  var c   = active ? (type==='barrier' ? BARRIER_COLOR : '#4ade80')
+                   : (type==='barrier' ? BARRIER_COLOR : '#38bdf8');
   var sz  = active ? 9 : 6;
   var op  = active ? 1 : 0.75;
-  // reservoir = circle, barrier = diamond (rotated square)
   var shape = type==='barrier'
     ? '<div style="width:'+sz+'px;height:'+sz+'px;background:'+c+';transform:rotate(45deg);box-shadow:0 0 5px '+c+';opacity:'+op+'"></div>'
     : '<div style="width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:'+c+';box-shadow:0 0 5px '+c+';opacity:'+op+'"></div>';
@@ -778,7 +1199,7 @@ function makeIcon(type, active) {
 // ─────────────────────────────────────────────────
 //  Place all markers
 // ─────────────────────────────────────────────────
-var markerMap = {};   // id -> {marker, type}
+var markerMap = {};
 var activeId  = null;
 var activeType = null;
 var wsData = null, dsData = null;
@@ -787,7 +1208,7 @@ var watershedLayer = null, downstreamLayer = null;
 function addMarkers(data, type) {
   data.forEach(function(r){
     var key = type + '_' + r.id;
-    if (markerMap[key]) return;   // already added
+    if (markerMap[key]) return;
     var m = L.marker([r.lat,r.lng],{icon:makeIcon(type,false)})
       .bindTooltip((type==='barrier'?'Barrier':'Reservoir')+' #'+r.id+'<br/>'+r.lat.toFixed(4)+', '+r.lng.toFixed(4),
         {direction:'top',offset:[0,-6]})
@@ -795,9 +1216,7 @@ function addMarkers(data, type) {
     markerMap[key] = { marker:m, type:type, data:r };
   });
 }
-// ─────────────────────────────────────────────────
-//  Feature visibility (checkboxes)
-// ─────────────────────────────────────────────────
+
 function updateCounts() {
   document.getElementById('count-reservoir').textContent = RESERVOIRS.length;
   document.getElementById('count-barrier').textContent   = BARRIERS.length;
@@ -814,8 +1233,9 @@ function updateMarkerVisibility() {
     else      { if (map.hasLayer(entry.marker))  map.removeLayer(entry.marker); }
   });
 }
+
 // ─────────────────────────────────────────────────
-// Load coordinates from JSON, then init markers
+// Load coordinates
 // ─────────────────────────────────────────────────
 Promise.all([
   fetch(GEOJSON_DIR + '/reservoir.json').then(function(r){ return r.json(); }),
@@ -841,7 +1261,7 @@ Promise.all([
 });
 
 // ─────────────────────────────────────────────────
-//  Search (shows results only when typing)
+//  Search
 // ─────────────────────────────────────────────────
 function handleSearch() {
   var q   = document.getElementById('search').value.toLowerCase().trim();
@@ -849,7 +1269,6 @@ function handleSearch() {
 
   if (!q) { box.innerHTML=''; box.classList.remove('visible'); return; }
 
-  // Which datasets to search (respect checkbox state)
   var sources = [];
   if (document.getElementById('chk-reservoir').checked) sources.push({data:RESERVOIRS,type:'reservoir'});
   if (document.getElementById('chk-barrier').checked)   sources.push({data:BARRIERS,  type:'barrier'});
@@ -865,7 +1284,7 @@ function handleSearch() {
   if (results.length===0) {
     box.innerHTML = '<div style="padding:8px 14px;font-size:11px;color:var(--muted);">No results</div>';
   } else {
-    results.slice(0,30).forEach(function(item){   // cap at 30
+    results.slice(0,30).forEach(function(item){
       var div = document.createElement('div');
       div.className = 'res-item' + (item.type==='barrier'?' barrier-item':'');
       div.innerHTML =
@@ -888,9 +1307,6 @@ function handleSearch() {
 //  GeoJSON fetch
 // ─────────────────────────────────────────────────
 var cache = {};
-// type = 'reservoir' | 'barrier'
-// Files live at:  geojson/reservoir/watershed_311.geojson
-//                 geojson/barrier/watershed_101.geojson
 function resolveUrl(filename, type) {
   var subfolder = (type === 'barrier') ? 'barrier' : 'reservoir';
   if (typeof GEOJSON_DIR === 'string') {
@@ -957,24 +1373,18 @@ function refreshLayers(){
 // ─────────────────────────────────────────────────
 function clearSelection() {
   if (!activeId) return;
-  // Reset marker icon
   var key = (activeType||'reservoir') + '_' + activeId;
   if (markerMap[key]) markerMap[key].marker.setIcon(makeIcon(activeType, false));
-  // Remove layers
   if (watershedLayer)  { map.removeLayer(watershedLayer);  watershedLayer  = null; }
   if (downstreamLayer) { map.removeLayer(downstreamLayer); downstreamLayer = null; }
-  // Reset state
   activeId = null; activeType = null; wsData = null; dsData = null;
-  // Reset card
   var card = document.getElementById('info-card');
   card.className = '';
   card.innerHTML = '<div style="color:var(--muted);font-size:11px;padding-top:2px;">Select a feature to view details</div>';
-  // Hide time series
   hideTimeSeries();
 }
 
 function selectFeature(id, type) {
-  // Reset previous marker
   if (activeId) {
     var prevKey = (activeType||'reservoir')+'_'+activeId;
     if (markerMap[prevKey]) markerMap[prevKey].marker.setIcon(makeIcon(activeType,false));
@@ -991,9 +1401,6 @@ function selectFeature(id, type) {
   updateCard(id,type,res,null,null,true);
   document.getElementById('spinner').style.display='block';
 
-  // Both reservoir and barrier use the same filename convention:
-  // geojson/reservoir/watershed_{id}.geojson
-  // geojson/barrier/watershed_{id}.geojson
   Promise.all([
     fetchGeoJSON('watershed_'  + id + '.geojson', type),
     fetchGeoJSON('downstream_' + id + '.geojson', type)
@@ -1017,18 +1424,15 @@ function updateCard(id,type,res,hasWS,hasDS,loading){
     return;
   }
 
-  // Build extra info rows from optional fields
   function row(label, val, color) {
     if (val === undefined || val === null || val === '') return '';
     var style = color ? ' style="color:'+color+'"' : '';
     return '<div class="ic-row"><span>'+label+'</span><span class="ic-val"'+style+'>'+val+'</span></div>';
   }
 
-  // Read raw JSON keys (Basin, Areal_Impact (%), country)
   var basin       = res['Basin']            || res['basin']        || '';
   var country     = res['country']          || res['Country']      || '';
   var arealRaw    = res['Areal_Impact (%)'] || res['areal_impact'] || '';
-  // Strip trailing % if already present, then re-add cleanly
   var arealVal    = arealRaw ? String(arealRaw).replace(/%$/, '') + '%' : '';
 
   card.innerHTML=
@@ -1050,21 +1454,10 @@ function updateCard(id,type,res,hasWS,hasDS,loading){
 }
 
 // ─────────────────────────────────────────────────
-//  Time series (real runoff data — fetched per feature)
+//  Time series
 // ─────────────────────────────────────────────────
-//
-//  Data files live alongside watershed/downstream GeoJSON:
-//      geojson/reservoir/timeseries_{id}.json
-//      geojson/barrier/timeseries_{id}.json
-//
-//  Shape:
-//      { "dates":       ["2000-01", ...],
-//        "Surface":     [...],
-//        "Sub_Surface": [...],
-//        "Precip":      [...] }
-//
-var tsData  = null;   // current feature's series
-var tsCache = {};     // feature_key -> series
+var tsData  = null;
+var tsCache = {};
 
 function fetchTimeSeries(id, type) {
   var key = type + '_' + id;
@@ -1077,12 +1470,16 @@ function fetchTimeSeries(id, type) {
 
 function renderTimeSeries() {
   if (!tsData || !activeId) return;
+  // Keep modal in sync if it's open
+  var modalMetric = document.getElementById('ts-modal-metric');
+  if (modalMetric) modalMetric.value = document.getElementById('ts-metric').value;
+  renderTimeSeriesModal();
+
   var metric = document.getElementById('ts-metric').value;
   var values = tsData[metric];
   var dates  = tsData.dates;
   if (!values || !values.length) { renderTSEmpty(); return; }
 
-  // Filter nulls for stats; keep original array length for index alignment
   var clean = values.filter(function(v){ return v !== null && v !== undefined && !isNaN(v); });
   if (!clean.length) { renderTSEmpty(); return; }
 
@@ -1091,7 +1488,6 @@ function renderTimeSeries() {
   var sum = clean.reduce(function(a,b){ return a+b; }, 0);
   var mean = sum / clean.length;
 
-  // Choose precision adaptively based on magnitude
   var absMax = Math.max(Math.abs(min), Math.abs(max));
   var dp;
   if      (absMax >= 100) dp = 0;
@@ -1104,12 +1500,10 @@ function renderTimeSeries() {
   document.getElementById('ts-mean').textContent = mean.toFixed(dp);
   document.getElementById('ts-max').textContent  = max.toFixed(dp);
 
-  // Y-axis tick labels (max at top, midpoint, min at bottom)
   document.getElementById('ts-y-max').textContent = max.toFixed(dp);
   document.getElementById('ts-y-mid').textContent = ((max + min) / 2).toFixed(dp);
   document.getElementById('ts-y-min').textContent = min.toFixed(dp);
 
-  // SVG viewBox is 280x110 — preserveAspectRatio="none" stretches X to fill
   var W = 280, H = 110, pad = 4;
   var n = values.length;
   var range = max - min || 1;
@@ -1117,7 +1511,6 @@ function renderTimeSeries() {
   function xAt(i) { return pad + (i / (n - 1)) * (W - 2 * pad); }
   function yAt(v) { return H - pad - ((v - min) / range) * (H - 2 * pad); }
 
-  // Build path with breaks across nulls (M starts a new sub-path)
   var pathD = '';
   var startNewSeg = true;
   for (var i = 0; i < n; i++) {
@@ -1127,7 +1520,6 @@ function renderTimeSeries() {
     pathD += (startNewSeg ? 'M' : 'L') + x.toFixed(2) + ' ' + y.toFixed(2) + ' ';
     startNewSeg = false;
   }
-  // Area path: only build if there are no nulls; otherwise omit to avoid weird fills
   var hasNulls = clean.length !== n;
   var areaD = '';
   if (!hasNulls) {
@@ -1136,21 +1528,49 @@ function renderTimeSeries() {
   }
 
   var isBarrier = activeType === 'barrier';
-  var stroke = isBarrier ? '#f472b6' : '#38bdf8';
-  var fill   = isBarrier ? 'rgba(244,114,182,0.12)' : 'rgba(56,189,248,0.12)';
+  var stroke = isBarrier ? BARRIER_COLOR : '#38bdf8';
+  var fill   = isBarrier ? BARRIER_FILL  : 'rgba(56,189,248,0.12)';
+  var isPrecip = (metric === 'Precip');
 
   var svg = document.getElementById('ts-svg');
-  svg.innerHTML =
-    (areaD ? '<path d="' + areaD + '" fill="' + fill + '" stroke="none"/>' : '') +
-    '<path d="' + pathD + '" fill="none" stroke="' + stroke + '" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' +
-    '<line class="ts-hover-line" id="ts-hover-line" x1="0" y1="0" x2="0" y2="' + H + '"/>' +
-    '<circle class="ts-hover-dot"  id="ts-hover-dot"  r="3" cx="0" cy="0"/>';
+  if (isPrecip) {
+    // Vertical bars for precipitation.
+    // Bar baseline = max(0, min) so we don't draw bars below zero when all values are positive.
+    var base = Math.max(0, min);
+    var baseY = yAt(base);
+    var plotW = W - 2 * pad;
+    var slot  = plotW / n;                       // width of one time slot
+    var bw    = Math.max(0.6, slot * 0.7);       // bar width (with some gap)
+    var barsHtml = '';
+    for (var bi = 0; bi < n; bi++) {
+      var bv = values[bi];
+      if (bv === null || bv === undefined || isNaN(bv)) continue;
+      var cx = xAt(bi);
+      var by = yAt(bv);
+      var topY = Math.min(by, baseY);
+      var hPx  = Math.abs(by - baseY);
+      // Minimum 1px height so very small values are still visible
+      if (hPx < 1) hPx = 1;
+      barsHtml +=
+        '<rect x="' + (cx - bw / 2).toFixed(2) + '" y="' + topY.toFixed(2) +
+        '" width="' + bw.toFixed(2) + '" height="' + hPx.toFixed(2) +
+        '" fill="' + stroke + '" />';
+    }
+    svg.innerHTML =
+      barsHtml +
+      '<line class="ts-hover-line" id="ts-hover-line" x1="0" y1="0" x2="0" y2="' + H + '"/>' +
+      '<circle class="ts-hover-dot"  id="ts-hover-dot"  r="3" cx="0" cy="0"/>';
+  } else {
+    svg.innerHTML =
+      (areaD ? '<path d="' + areaD + '" fill="' + fill + '" stroke="none"/>' : '') +
+      '<path d="' + pathD + '" fill="none" stroke="' + stroke + '" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' +
+      '<line class="ts-hover-line" id="ts-hover-line" x1="0" y1="0" x2="0" y2="' + H + '"/>' +
+      '<circle class="ts-hover-dot"  id="ts-hover-dot"  r="3" cx="0" cy="0"/>';
+  }
 
-  // X-axis: first + last date
   var axis = document.getElementById('ts-axis-x');
   axis.innerHTML = '<span>' + dates[0] + '</span><span>' + dates[n - 1] + '</span>';
 
-  // Hover interaction (bound to plot column, not the outer wrap which includes the y-axis)
   var wrap = document.getElementById('ts-chart-wrap');
   var plot = wrap.querySelector('.ts-plot');
   var tip  = document.getElementById('ts-tooltip');
@@ -1164,7 +1584,6 @@ function renderTimeSeries() {
     if (idx < 0) idx = 0; if (idx > n - 1) idx = n - 1;
     var v = values[idx];
     if (v === null || v === undefined || isNaN(v)) {
-      // No data at this point — hide markers
       line.style.opacity = 0; dot.style.opacity = 0; tip.style.opacity = 0;
       return;
     }
@@ -1186,9 +1605,29 @@ function renderTimeSeries() {
     dot.style.opacity  = 0;
     tip.style.opacity  = 0;
   };
+  // Hide tooltip immediately on click anywhere in the plot
+  // (prevents stale tooltip from lingering when user clicks instead of hovers)
+  plot.onmousedown = function() {
+    line.style.opacity = 0;
+    dot.style.opacity  = 0;
+    tip.style.opacity  = 0;
+  };
 }
 
-// Show an "empty" state inside the chart when a feature has no time series
+// Globally dismiss the time-series tooltip on any click outside the plot
+// (e.g. clicking the metric dropdown, info card, map, etc.)
+document.addEventListener('mousedown', function(e) {
+  var plot = document.querySelector('.ts-plot');
+  if (!plot) return;
+  if (plot.contains(e.target)) return;   // hovering the chart itself — let the chart handle it
+  var line = document.getElementById('ts-hover-line');
+  var dot  = document.getElementById('ts-hover-dot');
+  var tip  = document.getElementById('ts-tooltip');
+  if (line) line.style.opacity = 0;
+  if (dot)  dot.style.opacity  = 0;
+  if (tip)  tip.style.opacity  = 0;
+});
+
 function renderTSEmpty() {
   document.getElementById('ts-min').textContent  = '–';
   document.getElementById('ts-mean').textContent = '–';
@@ -1205,7 +1644,6 @@ function showTimeSeries(id, type) {
   var card = document.getElementById('ts-card');
   card.className = type === 'barrier' ? 'barrier-active' : 'active';
 
-  // Reset stats + show a brief loading indicator inside the chart
   document.getElementById('ts-min').textContent  = '…';
   document.getElementById('ts-mean').textContent = '…';
   document.getElementById('ts-max').textContent  = '…';
@@ -1216,10 +1654,8 @@ function showTimeSeries(id, type) {
     '<text x="140" y="55" text-anchor="middle" fill="#64748b" font-family="Bitter,serif" font-size="11" font-style="italic">Loading…</text>';
   document.getElementById('ts-axis-x').innerHTML = '<span>–</span><span>–</span>';
 
-  // Capture the click so a fast follow-up click on another feature doesn't render stale data
   var thisId = id, thisType = type;
   fetchTimeSeries(id, type).then(function(data) {
-    // If the user has since clicked elsewhere, drop this result
     if (activeId !== thisId || activeType !== thisType) return;
     if (!data) { tsData = null; renderTSEmpty(); return; }
     tsData = data;
@@ -1230,20 +1666,358 @@ function showTimeSeries(id, type) {
 function hideTimeSeries() {
   document.getElementById('ts-card').className = '';
   tsData = null;
+  // If the modal is open for this feature, close it too
+  closeTimeSeriesModal();
 }
 
 // ─────────────────────────────────────────────────
-//  Panel toggle
+//  Time series MODAL (large view)
+// ─────────────────────────────────────────────────
+function openTimeSeriesModal() {
+  if (!tsData || !activeId) return;
+  var modal = document.getElementById('ts-modal');
+  // Sync metric selector with the small card's selector
+  document.getElementById('ts-modal-metric').value =
+    document.getElementById('ts-metric').value;
+  // Title + subtitle
+  var isBarrier = activeType === 'barrier';
+  modal.classList.toggle('barrier', isBarrier);
+  document.getElementById('ts-modal-title').textContent =
+    (isBarrier ? 'Barrier' : 'Reservoir') + ' #' + activeId;
+  var dataset = isBarrier ? BARRIERS : RESERVOIRS;
+  var res = dataset.find(function(r){ return r.id === activeId; });
+  var subEl = document.getElementById('ts-modal-sub');
+  if (res) {
+    var country = res['country'] || res['Country'] || '';
+    var basin   = res['Basin']   || res['basin']   || '';
+    var parts = [];
+    if (country) parts.push('Country: <b>' + country + '</b>');
+    if (basin)   parts.push('Basin: <b>'   + basin   + '</b>');
+    subEl.innerHTML = parts.join('<span class="sub-sep">·</span>');
+  } else {
+    subEl.innerHTML = '';
+  }
+
+  modal.classList.add('visible');
+  renderTimeSeriesModal();
+}
+
+function closeTimeSeriesModal() {
+  var modal = document.getElementById('ts-modal');
+  if (modal) modal.classList.remove('visible');
+}
+
+function handleModalBackdropClick(e) {
+  // Clicking the backdrop (not the box) closes the modal
+  if (e.target.id === 'ts-modal') closeTimeSeriesModal();
+}
+
+// When the user changes metric inside the modal, mirror it back to the small card
+// and re-render both views
+function syncMetricFromModal() {
+  var v = document.getElementById('ts-modal-metric').value;
+  document.getElementById('ts-metric').value = v;
+  renderTimeSeries();          // updates the small chart
+  renderTimeSeriesModal();     // updates the large chart
+}
+
+// Esc closes the modal
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    var modal = document.getElementById('ts-modal');
+    if (modal && modal.classList.contains('visible')) closeTimeSeriesModal();
+  }
+});
+
+function renderTimeSeriesModal() {
+  var modal = document.getElementById('ts-modal');
+  if (!modal.classList.contains('visible')) return;
+  if (!tsData || !activeId) return;
+
+  var metric = document.getElementById('ts-modal-metric').value;
+  var values = tsData[metric];
+  var dates  = tsData.dates;
+  if (!values || !values.length) { renderModalEmpty(); return; }
+
+  var clean = values.filter(function(v){ return v !== null && v !== undefined && !isNaN(v); });
+  if (!clean.length) { renderModalEmpty(); return; }
+
+  var min = Math.min.apply(null, clean);
+  var max = Math.max.apply(null, clean);
+  var mean = clean.reduce(function(a,b){ return a+b; }, 0) / clean.length;
+
+  var absMax = Math.max(Math.abs(min), Math.abs(max));
+  var dp;
+  if      (absMax >= 100) dp = 0;
+  else if (absMax >= 10)  dp = 1;
+  else if (absMax >= 1)   dp = 2;
+  else if (absMax >= 0.1) dp = 3;
+  else                    dp = 4;
+
+  document.getElementById('ts-modal-min').textContent  = min.toFixed(dp);
+  document.getElementById('ts-modal-mean').textContent = mean.toFixed(dp);
+  document.getElementById('ts-modal-max').textContent  = max.toFixed(dp);
+  document.getElementById('ts-modal-y-max').textContent = max.toFixed(dp);
+  document.getElementById('ts-modal-y-mid').textContent = ((max + min) / 2).toFixed(dp);
+  document.getElementById('ts-modal-y-min').textContent = min.toFixed(dp);
+
+  // Bigger viewBox for the modal chart
+  var W = 800, H = 380, pad = 8;
+  var n = values.length;
+  var range = max - min || 1;
+
+  function xAt(i) { return pad + (i / (n - 1)) * (W - 2 * pad); }
+  function yAt(v) { return H - pad - ((v - min) / range) * (H - 2 * pad); }
+
+  var pathD = '';
+  var startNewSeg = true;
+  for (var i = 0; i < n; i++) {
+    var v = values[i];
+    if (v === null || v === undefined || isNaN(v)) { startNewSeg = true; continue; }
+    var x = xAt(i), y = yAt(v);
+    pathD += (startNewSeg ? 'M' : 'L') + x.toFixed(2) + ' ' + y.toFixed(2) + ' ';
+    startNewSeg = false;
+  }
+  var hasNulls = clean.length !== n;
+  var areaD = '';
+  if (!hasNulls) {
+    areaD = pathD + 'L' + xAt(n - 1).toFixed(2) + ' ' + (H - pad) +
+                   ' L' + xAt(0).toFixed(2)     + ' ' + (H - pad) + ' Z';
+  }
+
+  var isBarrier = activeType === 'barrier';
+  var stroke = isBarrier ? BARRIER_COLOR : '#38bdf8';
+  var fill   = isBarrier ? BARRIER_FILL  : 'rgba(56,189,248,0.12)';
+  var dotFill = stroke;
+  var isPrecip = (metric === 'Precip');
+
+  // Build gridlines (3 horizontal, at top/mid/bottom) for readability
+  var gridY1 = pad;
+  var gridY2 = H / 2;
+  var gridY3 = H - pad;
+  var gridLines =
+    '<line x1="' + pad + '" y1="' + gridY1 + '" x2="' + (W - pad) + '" y2="' + gridY1 + '" stroke="#243048" stroke-width="0.5" stroke-dasharray="3 3"/>' +
+    '<line x1="' + pad + '" y1="' + gridY2 + '" x2="' + (W - pad) + '" y2="' + gridY2 + '" stroke="#243048" stroke-width="0.5" stroke-dasharray="3 3"/>' +
+    '<line x1="' + pad + '" y1="' + gridY3 + '" x2="' + (W - pad) + '" y2="' + gridY3 + '" stroke="#243048" stroke-width="0.5" stroke-dasharray="3 3"/>';
+
+  var svg = document.getElementById('ts-modal-svg');
+  if (isPrecip) {
+    // Vertical bars for precipitation
+    var baseM = Math.max(0, min);
+    var baseYM = yAt(baseM);
+    var plotWM = W - 2 * pad;
+    var slotM  = plotWM / n;
+    var bwM    = Math.max(0.8, slotM * 0.7);
+    var barsHtmlM = '';
+    for (var mi = 0; mi < n; mi++) {
+      var mv = values[mi];
+      if (mv === null || mv === undefined || isNaN(mv)) continue;
+      var cxM = xAt(mi);
+      var byM = yAt(mv);
+      var topYM = Math.min(byM, baseYM);
+      var hPxM  = Math.abs(byM - baseYM);
+      if (hPxM < 1) hPxM = 1;
+      barsHtmlM +=
+        '<rect x="' + (cxM - bwM / 2).toFixed(2) + '" y="' + topYM.toFixed(2) +
+        '" width="' + bwM.toFixed(2) + '" height="' + hPxM.toFixed(2) +
+        '" fill="' + stroke + '" />';
+    }
+    svg.innerHTML =
+      gridLines +
+      barsHtmlM +
+      '<line id="ts-modal-hover-line" x1="0" y1="0" x2="0" y2="' + H + '" stroke="#64748b" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>' +
+      '<circle id="ts-modal-hover-dot" r="5" cx="0" cy="0" fill="' + dotFill + '" stroke="#0b0f1a" stroke-width="2" opacity="0"/>';
+  } else {
+    svg.innerHTML =
+      gridLines +
+      (areaD ? '<path d="' + areaD + '" fill="' + fill + '" stroke="none"/>' : '') +
+      '<path d="' + pathD + '" fill="none" stroke="' + stroke + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+      '<line id="ts-modal-hover-line" x1="0" y1="0" x2="0" y2="' + H + '" stroke="#64748b" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>' +
+      '<circle id="ts-modal-hover-dot" r="5" cx="0" cy="0" fill="' + dotFill + '" stroke="#0b0f1a" stroke-width="2" opacity="0"/>';
+  }
+
+  // X-axis: choose a number of evenly-spaced ticks that fits the modal width.
+  // We aim for ~110px between labels and clamp to [2 .. min(n, 12)].
+  var modalWidth = document.querySelector('.ts-modal-box').getBoundingClientRect().width || 800;
+  var availableX = modalWidth - 80; // approximate plot width after y-axis + padding
+  var targetTicks = Math.max(2, Math.min(n, Math.min(12, Math.floor(availableX / 110))));
+  var axisHtml = '<div class="x-track">';
+  for (var t = 0; t < targetTicks; t++) {
+    var idxT = Math.round((t / (targetTicks - 1)) * (n - 1));
+    var pct = (idxT / (n - 1)) * 100;
+    var cls = 'x-tick';
+    if (t === 0)                  cls += ' x-first';
+    else if (t === targetTicks-1) cls += ' x-last';
+    axisHtml += '<span class="' + cls + '" style="left:' + pct + '%;">' + dates[idxT] + '</span>';
+  }
+  axisHtml += '</div>';
+  document.getElementById('ts-modal-axis-x').innerHTML = axisHtml;
+
+  // Hover interaction
+  var plot = document.getElementById('ts-modal-plot');
+  var tip  = document.getElementById('ts-modal-tooltip');
+  var line = document.getElementById('ts-modal-hover-line');
+  var dot  = document.getElementById('ts-modal-hover-dot');
+
+  // Friendly label for the selected metric (matches dropdown options)
+  var metricLabels = {
+    'Surface':     'Surface Runoff',
+    'Sub_Surface': 'Sub-Surface Runoff',
+    'Precip':      'Precipitation'
+  };
+  var metricLabel = metricLabels[metric] || metric;
+
+  plot.onmousemove = function(e) {
+    var rect = plot.getBoundingClientRect();
+    var relX = (e.clientX - rect.left) / rect.width;
+    var idx  = Math.round(relX * (n - 1));
+    if (idx < 0) idx = 0; if (idx > n - 1) idx = n - 1;
+    var v = values[idx];
+    if (v === null || v === undefined || isNaN(v)) {
+      line.style.opacity = 0; dot.style.opacity = 0; tip.style.opacity = 0;
+      return;
+    }
+    var xPx = (xAt(idx) / W) * rect.width;
+    var yPx = (yAt(v)   / H) * rect.height;
+    line.setAttribute('x1', xAt(idx)); line.setAttribute('x2', xAt(idx));
+    line.style.opacity = 1;
+    dot.setAttribute('cx', xAt(idx));  dot.setAttribute('cy', yAt(v));
+    dot.style.opacity = 1;
+    tip.style.left = xPx + 'px';
+    tip.style.top  = yPx + 'px';
+    tip.innerHTML =
+      '<div class="tt-date">' + dates[idx] + '</div>' +
+      '<div class="tt-row">' +
+        '<span class="tt-dot" style="background:' + dotFill + '"></span>' +
+        '<span class="tt-label">' + metricLabel + ':</span>' +
+        '<span class="tt-val">' + v.toFixed(dp) + '</span>' +
+      '</div>';
+    tip.style.opacity = 1;
+  };
+  plot.onmouseleave = function() {
+    line.style.opacity = 0;
+    dot.style.opacity  = 0;
+    tip.style.opacity  = 0;
+  };
+}
+
+function renderModalEmpty() {
+  document.getElementById('ts-modal-min').textContent  = '–';
+  document.getElementById('ts-modal-mean').textContent = '–';
+  document.getElementById('ts-modal-max').textContent  = '–';
+  document.getElementById('ts-modal-y-max').textContent = '–';
+  document.getElementById('ts-modal-y-mid').textContent = '–';
+  document.getElementById('ts-modal-y-min').textContent = '–';
+  document.getElementById('ts-modal-axis-x').innerHTML = '<div class="x-track"><span class="x-tick x-first">–</span><span class="x-tick x-last" style="left:100%;">–</span></div>';
+  document.getElementById('ts-modal-svg').innerHTML =
+    '<text x="400" y="190" text-anchor="middle" fill="#64748b" font-family="Bitter,serif" font-size="14" font-style="italic">No time series data</text>';
+}
+
+// ─────────────────────────────────────────────────
+//  Panel toggle + Resize
 // ─────────────────────────────────────────────────
 var panelOpen=true;
+var panelWidth = 400;   // current width in px (kept in sync with --panel-w)
+
 function togglePanel(){
   panelOpen=!panelOpen;
   document.getElementById('panel').classList.toggle('collapsed',!panelOpen);
   var btn=document.getElementById('toggle-panel');
   btn.classList.toggle('collapsed',!panelOpen);
   btn.innerHTML=panelOpen?'&#8249;':'&#8250;';
+  // When opening, move the toggle button to match current panel width
+  if (panelOpen) btn.style.left = panelWidth + 'px';
+  else           btn.style.left = '';   // CSS handles the collapsed position
   setTimeout(function(){ map.invalidateSize(); },310);
 }
+
+// Resize sidebar by dragging the right edge
+(function setupResize() {
+  var handle = document.getElementById('panel-resize');
+  var panel  = document.getElementById('panel');
+  var toggleBtn = document.getElementById('toggle-panel');
+  var workspace = document.querySelector('.workspace');
+
+  // Parse min/max from CSS variables (so we can update them on the fly)
+  function readBounds() {
+    var s = getComputedStyle(document.documentElement);
+    var minStr = s.getPropertyValue('--panel-min').trim();
+    var maxStr = s.getPropertyValue('--panel-max').trim();
+    function parsePx(v) {
+      if (v.endsWith('vw')) return window.innerWidth * parseFloat(v) / 100;
+      if (v.endsWith('px')) return parseFloat(v);
+      return parseFloat(v);
+    }
+    return { min: parsePx(minStr) || 220, max: parsePx(maxStr) || 640 };
+  }
+
+  function setWidth(px) {
+    var b = readBounds();
+    // Cap to workspace width minus a small margin so the map remains usable
+    var wsRect = workspace.getBoundingClientRect();
+    var ceiling = Math.min(b.max, wsRect.width - 120);
+    if (ceiling < b.min) ceiling = b.min;
+    if (px < b.min) px = b.min;
+    if (px > ceiling) px = ceiling;
+    panelWidth = px;
+    panel.style.width = px + 'px';
+    if (panelOpen) toggleBtn.style.left = px + 'px';
+    map.invalidateSize();
+  }
+
+  var dragging = false;
+  var startX = 0, startW = 0;
+
+  function onPointerDown(e) {
+    if (panel.classList.contains('collapsed')) return;
+    dragging = true;
+    startX = (e.touches ? e.touches[0].clientX : e.clientX);
+    startW = panel.getBoundingClientRect().width;
+    panel.classList.add('resizing');
+    workspace.classList.add('resizing');
+    handle.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  }
+  function onPointerMove(e) {
+    if (!dragging) return;
+    var x = (e.touches ? e.touches[0].clientX : e.clientX);
+    setWidth(startW + (x - startX));
+  }
+  function onPointerUp() {
+    if (!dragging) return;
+    dragging = false;
+    panel.classList.remove('resizing');
+    workspace.classList.remove('resizing');
+    handle.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  }
+
+  handle.addEventListener('mousedown',  onPointerDown);
+  window.addEventListener('mousemove',  onPointerMove);
+  window.addEventListener('mouseup',    onPointerUp);
+  handle.addEventListener('touchstart', onPointerDown, {passive:false});
+  window.addEventListener('touchmove',  onPointerMove,  {passive:false});
+  window.addEventListener('touchend',   onPointerUp);
+
+  // Double-click to reset to default width
+  handle.addEventListener('dblclick', function() { setWidth(400); });
+
+  // Keep things sane on window resize
+  window.addEventListener('resize', function() {
+    // Re-clamp current width to new bounds
+    setWidth(panel.getBoundingClientRect().width);
+    map.invalidateSize();
+  });
+
+  // Initial sync
+  setTimeout(function(){
+    panelWidth = panel.getBoundingClientRect().width || 400;
+    if (panelOpen) toggleBtn.style.left = panelWidth + 'px';
+  }, 0);
+})();
 </script>
 </body>
 </html>
