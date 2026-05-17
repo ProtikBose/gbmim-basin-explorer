@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
+  /* ─────────────── DARK THEME (default) ─────────────── */
   :root {
     --bg:         #0b0f1a;
     --surface:    #111827;
@@ -19,10 +20,37 @@
     --barrier:    #ef4444;   /* barrier    — red      */
     --text:       #e2e8f0;
     --muted:      #64748b;
+    --map-bg:     #0e1520;   /* leaflet container bg  */
+    --tooltip-stroke: #0b0f1a;
+    --grid-line:  #243048;
+    --shadow-strong: rgba(0,0,0,.6);
+    --shadow-med:    rgba(0,0,0,.5);
+    --shadow-soft:   rgba(0,0,0,.4);
+
     --panel-w:    400px;
     --panel-min:  260px;
     --panel-max:  640px;
     --nav-h:      56px;
+  }
+
+  /* ─────────────── LIGHT THEME ─────────────── */
+  [data-theme="light"] {
+    --bg:         #f5f7fb;
+    --surface:    #ffffff;
+    --surface2:   #eef2f7;
+    --border:     #d8dee8;
+    --accent:     #0284c7;   /* deeper sky for contrast on white */
+    --accent2:    #16a34a;   /* deeper green */
+    --accent3:    #ea580c;   /* deeper orange */
+    --barrier:    #dc2626;
+    --text:       #0f172a;
+    --muted:      #64748b;
+    --map-bg:     #e5ebf2;
+    --tooltip-stroke: #ffffff;
+    --grid-line:  #d8dee8;
+    --shadow-strong: rgba(15,23,42,.18);
+    --shadow-med:    rgba(15,23,42,.12);
+    --shadow-soft:   rgba(15,23,42,.08);
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -38,14 +66,15 @@
     font-family: 'Inter', sans-serif;
     font-weight: 300;
     height: 100vh;
-    height: 100dvh; /* better for mobile browsers */
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    transition: background-color .25s ease, color .25s ease;
   }
 
   /* ══════════════════════════════════════════
-     NAV BAR — responsive
+     NAV BAR
   ══════════════════════════════════════════ */
   nav {
     height: var(--nav-h);
@@ -58,6 +87,7 @@
     flex-shrink: 0;
     z-index: 1000;
     position: relative;
+    transition: background-color .25s ease, border-color .25s ease;
   }
 
   .nav-title {
@@ -92,14 +122,15 @@
     text-transform: uppercase;
   }
   .nav-link:hover  { color: var(--text);   background: var(--surface2); }
-  .nav-link.active { color: var(--accent); background: rgba(56,189,248,.09); }
+  .nav-link.active { color: var(--accent); background: rgba(2,132,199,.09); }
+  [data-theme="light"] .nav-link.active { background: rgba(2,132,199,.1); }
 
   .nav-right {
     position: absolute;
     right: 28px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
   }
   .nav-badge {
     background: rgba(56,189,248,.1);
@@ -112,8 +143,41 @@
     font-weight: 600;
     white-space: nowrap;
   }
+  [data-theme="light"] .nav-badge {
+    background: rgba(2,132,199,.08);
+    border-color: rgba(2,132,199,.3);
+  }
 
-  /* mobile nav adjustments */
+  /* ── Theme toggle button ── */
+  #theme-toggle {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color .15s, border-color .15s, background .15s;
+    flex-shrink: 0;
+  }
+  #theme-toggle:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  #theme-toggle svg {
+    width: 16px;
+    height: 16px;
+    display: block;
+  }
+  /* Show sun in dark mode, moon in light mode */
+  #theme-toggle .icon-sun { display: block; }
+  #theme-toggle .icon-moon { display: none; }
+  [data-theme="light"] #theme-toggle .icon-sun  { display: none; }
+  [data-theme="light"] #theme-toggle .icon-moon { display: block; }
+
   @media (max-width: 900px) {
     nav { padding: 0 12px; }
     .nav-title { left: 12px; font-size: 14px; }
@@ -132,12 +196,20 @@
   .page-overlay {
     position: fixed;
     inset: var(--nav-h) 0 0 0;
-    background: rgba(11,15,26,.97);
+    background: var(--bg);
     z-index: 800;
     display: none;
     overflow-y: auto;
     padding: 48px 64px;
     animation: fadeIn 0.2s ease;
+  }
+  /* Slight transparency tint over body, but readable in both themes */
+  [data-theme="dark"] .page-overlay,
+  :root:not([data-theme="light"]) .page-overlay {
+    background: rgba(11,15,26,.97);
+  }
+  [data-theme="light"] .page-overlay {
+    background: rgba(245,247,251,.98);
   }
   @media (max-width: 700px) {
     .page-overlay { padding: 28px 20px; }
@@ -212,7 +284,6 @@
     padding: 1px 7px;
     margin: 0 2px;
   }
-  /* Tiny demo icons used inside cards to mirror real UI affordances */
   .howto-icon-row {
     display: flex;
     align-items: center;
@@ -253,7 +324,6 @@
   }
   .howto-mini-tag.blue { color: var(--accent);  border-color: rgba(56,189,248,.4); }
   .howto-mini-tag.red  { color: var(--barrier); border-color: rgba(239,68,68,.4); }
-  /* Tip callout at the bottom */
   .howto-tips {
     background: rgba(56,189,248,.06);
     border: 1px solid rgba(56,189,248,.25);
@@ -261,6 +331,10 @@
     padding: 18px 22px;
     max-width: 1100px;
     margin-bottom: 32px;
+  }
+  [data-theme="light"] .howto-tips {
+    background: rgba(2,132,199,.06);
+    border-color: rgba(2,132,199,.25);
   }
   .howto-tips h3 {
     font-family: 'Bitter', serif;
@@ -305,7 +379,7 @@
   }
 
   /* ══════════════════════════════════════════
-     SIDE PANEL — resizable, scrollable
+     SIDE PANEL
   ══════════════════════════════════════════ */
   #panel {
     width: var(--panel-w);
@@ -315,15 +389,13 @@
     flex-direction: column;
     flex-shrink: 0;
     overflow: hidden;
-    transition: width 0.3s ease;
+    transition: width 0.3s ease, background-color .25s ease, border-color .25s ease;
     position: relative;
     min-height: 0;
   }
   #panel.collapsed { width: 0 !important; }
-  /* Disable transition during active drag for snappy feedback */
   #panel.resizing { transition: none; }
 
-  /* Inner scroll container — scrolls when content overflows vertically */
   .panel-scroll {
     flex: 1;
     overflow-y: auto;
@@ -337,20 +409,18 @@
   .panel-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
   .panel-scroll::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
-  /* Resize handle on the right edge of the panel */
   #panel-resize {
     position: absolute;
     top: 0;
-    right: -6px;          /* sits half outside so the hit area straddles the border */
+    right: -6px;
     width: 12px;
     height: 100%;
     cursor: col-resize;
     z-index: 600;
     background: transparent;
     transition: background .15s;
-    touch-action: none;   /* let JS handle touch dragging instead of scrolling */
+    touch-action: none;
   }
-  /* Visible grip indicator (a vertical bar of dots, centered) */
   #panel-resize::before {
     content: '';
     position: absolute;
@@ -374,6 +444,10 @@
   #panel-resize.dragging {
     background: rgba(56,189,248,.15);
   }
+  [data-theme="light"] #panel-resize:hover,
+  [data-theme="light"] #panel-resize.dragging {
+    background: rgba(2,132,199,.1);
+  }
   #panel.collapsed #panel-resize { display: none; }
 
   .panel-header {
@@ -384,7 +458,6 @@
   }
   .panel-header h2 { font-family:'Bitter',serif; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
 
-  /* ── Feature checkboxes ── */
   .feature-checks {
     padding: 10px 14px;
     border-bottom: 1px solid var(--border);
@@ -443,7 +516,6 @@
     padding: 0 6px;
   }
 
-  /* ── Layer toggles ── */
   .layer-toggles { padding:9px 14px; border-bottom:1px solid var(--border); flex-shrink:0; display:flex; flex-direction:column; gap:6px; }
   .layer-toggle-row { display:flex; align-items:center; justify-content:space-between; }
   .layer-toggle-label { display:flex; align-items:center; gap:7px; font-size:11px; color:var(--muted); letter-spacing:.04em; }
@@ -455,7 +527,6 @@
   .toggle-switch input:checked + .toggle-slider { background:var(--accent); }
   .toggle-switch input:checked + .toggle-slider::before { transform:translateX(13px); }
 
-  /* ── Search ── */
   .search-box { padding:8px 10px; border-bottom:1px solid var(--border); flex-shrink:0; }
   .search-box input {
     width:100%; background:var(--bg); border:1px solid var(--border); border-radius:6px;
@@ -465,7 +536,6 @@
   .search-box input:focus { border-color:var(--accent); }
   .search-hint { font-size:10px; color:var(--muted); margin-top:4px; padding:0 2px; }
 
-  /* ── Search results ── */
   #search-results {
     flex-shrink: 0;
     max-height: 200px;
@@ -487,6 +557,9 @@
   .res-item:hover { background:rgba(56,189,248,.06); }
   .res-item.active { background:rgba(56,189,248,.1); border-left-color:var(--accent); }
   .res-item.barrier-item.active { background:rgba(239,68,68,.1); border-left-color:var(--barrier); }
+  [data-theme="light"] .res-item:hover { background: rgba(2,132,199,.06); }
+  [data-theme="light"] .res-item.active { background: rgba(2,132,199,.1); }
+  [data-theme="light"] .res-item.barrier-item.active { background: rgba(220,38,38,.08); }
 
   .res-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
   .res-dot.dot-reservoir { background:var(--accent);  box-shadow:0 0 4px var(--accent); }
@@ -496,7 +569,6 @@
   .res-type-tag { font-size:9px; color:var(--muted); border:1px solid var(--border); border-radius:3px; padding:0 4px; margin-left:2px; flex-shrink:0; font-family:'Bitter',serif; }
   .res-coords { font-size:10px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-  /* ── Info card ── */
   #info-card { margin:8px 10px; padding:10px 12px; background:var(--bg); border:1px solid var(--border); border-radius:8px; font-size:12px; color:var(--muted); flex-shrink:0; min-height:72px; transition:border-color .3s; }
   #info-card.active { border-color:var(--accent); }
   #info-card.barrier-active { border-color:var(--barrier); }
@@ -525,7 +597,6 @@
   .badge-none    { background:rgba(100,116,139,.1);   color:var(--muted);   border:1px solid var(--border); }
   .badge-loading { background:rgba(56,189,248,.1);    color:var(--accent);  border:1px solid var(--accent); animation:pulse 1s infinite; }
 
-  /* ── Time series card ── */
   #ts-card {
     margin: 0 10px 8px;
     padding: 10px 12px 8px;
@@ -550,7 +621,7 @@
   }
   #ts-card.barrier-active .ts-title { color: var(--barrier); }
   .ts-metric {
-    background: none; border: 1px solid var(--border); border-radius: 5px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
     color: var(--muted);
     font-family: 'Bitter', serif; font-size: 9px; font-weight: 600;
     letter-spacing: .04em;
@@ -611,9 +682,8 @@
   .ts-hover-dot   { fill: var(--accent); stroke: var(--bg); stroke-width: 1.5; opacity: 0; }
   #ts-card.barrier-active .ts-hover-dot { fill: var(--barrier); }
 
-  /* Expand button (top-right of head, next to metric selector) */
   .ts-expand {
-    background: none;
+    background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 5px;
     color: var(--muted);
@@ -630,7 +700,6 @@
   .ts-expand:hover, .ts-expand:focus { color: var(--text); border-color: var(--muted); }
   .ts-head-right { display: flex; align-items: center; gap: 4px; }
 
-  /* ── Time series modal ── */
   #ts-modal {
     position: fixed;
     inset: 0;
@@ -643,6 +712,9 @@
     padding: 24px;
     animation: fadeIn 0.18s ease;
   }
+  [data-theme="light"] #ts-modal {
+    background: rgba(245,247,251,.78);
+  }
   #ts-modal.visible { display: flex; }
   .ts-modal-box {
     background: var(--surface);
@@ -653,7 +725,7 @@
     max-height: calc(100dvh - 48px);
     display: flex;
     flex-direction: column;
-    box-shadow: 0 20px 60px rgba(0,0,0,.6);
+    box-shadow: 0 20px 60px var(--shadow-strong);
     overflow: hidden;
   }
   .ts-modal-head {
@@ -770,12 +842,11 @@
     position: relative;
     height: 18px;
     margin-top: 4px;
-    padding-left: 64px;  /* yaxis (56) + gap (8) */
+    padding-left: 64px;
     font-family: 'Bitter', serif;
     font-size: 11px;
     color: var(--muted);
   }
-  /* Inner track that holds the ticks — sits in the same column as the plot */
   .ts-modal-axis-x .x-track {
     position: relative;
     height: 100%;
@@ -787,15 +858,11 @@
     transform: translateX(-50%);
     white-space: nowrap;
   }
-  /* First tick: don't pull off the left edge */
   .ts-modal-axis-x .x-tick.x-first { transform: translateX(0); }
-  /* Last tick: don't push past the right edge */
   .ts-modal-axis-x .x-tick.x-last  { transform: translateX(-100%); }
-  /* On narrow screens, shrink tick text */
   @media (max-width: 600px) {
     .ts-modal-axis-x { font-size: 9px; }
   }
-  /* Tooltip — left-align text, larger, with explicit field labels */
   .ts-modal-tooltip {
     position: absolute;
     background: var(--surface2);
@@ -810,7 +877,7 @@
     opacity: 0;
     transition: opacity .12s;
     font-family: 'Inter', sans-serif;
-    box-shadow: 0 4px 14px rgba(0,0,0,.5);
+    box-shadow: 0 4px 14px var(--shadow-med);
     z-index: 2;
     min-width: 160px;
   }
@@ -864,10 +931,9 @@
     opacity: 0;
     transition: opacity .12s;
     font-family: 'Bitter', serif;
-    box-shadow: 0 2px 8px rgba(0,0,0,.4);
+    box-shadow: 0 2px 8px var(--shadow-soft);
   }
 
-  /* ── Legend ── */
   #legend { margin:0 10px 10px; padding:9px 12px; background:var(--bg); border:1px solid var(--border); border-radius:8px; font-size:11px; flex-shrink:0; }
   .leg-title { font-family:'Bitter',serif; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:7px; font-weight:600; }
   .leg-row { display:flex; align-items:center; gap:7px; margin-bottom:4px; }
@@ -881,11 +947,10 @@
   ══════════════════════════════════════════ */
   #map { flex:1; z-index:1; min-width: 0; }
 
-  /* map controls */
   #map-controls { position:absolute; bottom:28px; right:10px; z-index:500; display:flex; flex-direction:column; align-items:flex-end; gap:6px; max-width: calc(100% - 20px); }
   #map-control-toggle { background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:5px 11px; font-family:'Bitter',serif; font-size:11px; font-weight:600; color:var(--muted); cursor:pointer; letter-spacing:.05em; text-transform:uppercase; transition:color .15s,border-color .15s; white-space:nowrap; }
   #map-control-toggle:hover, #map-control-toggle.open { color:var(--accent); border-color:var(--accent); }
-  #map-control-panel { background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:12px 14px; width:214px; max-width: 100%; display:none; flex-direction:column; gap:12px; box-shadow:0 8px 24px rgba(0,0,0,.5); }
+  #map-control-panel { background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:12px 14px; width:214px; max-width: 100%; display:none; flex-direction:column; gap:12px; box-shadow:0 8px 24px var(--shadow-med); }
   #map-control-panel.open { display:flex; }
   .mc-section-title { font-family:'Bitter',serif; font-size:10px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
   .basemap-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; }
@@ -901,12 +966,19 @@
   input[type=range].op-slider::-webkit-slider-thumb { -webkit-appearance:none; width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid var(--surface); box-shadow:0 0 4px var(--accent); }
   input[type=range].op-slider::-moz-range-thumb { width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid var(--surface); }
 
-  .leaflet-container { background:#0e1520; }
+  .leaflet-container { background: var(--map-bg); }
   .leaflet-control-zoom a { background:var(--surface)!important; color:var(--text)!important; border-color:var(--border)!important; font-size:14px!important; }
   .leaflet-control-zoom a:hover { background:var(--surface2)!important; }
-  .leaflet-popup-content-wrapper { background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.6); font-family:'Inter',sans-serif; font-size:12px; }
+  .leaflet-popup-content-wrapper { background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; box-shadow:0 8px 24px var(--shadow-strong); font-family:'Inter',sans-serif; font-size:12px; }
   .leaflet-popup-tip { background:var(--surface); }
   .leaflet-popup-close-button { color:var(--muted)!important; }
+  /* Tile attribution control */
+  .leaflet-control-attribution {
+    background: var(--surface) !important;
+    color: var(--muted) !important;
+    border: 1px solid var(--border);
+  }
+  .leaflet-control-attribution a { color: var(--accent) !important; }
 
   #spinner { position:fixed; bottom:16px; right:16px; background:var(--surface); border:1px solid var(--accent); border-radius:8px; padding:6px 14px; font-family:'Bitter',serif; font-size:12px; color:var(--accent); display:none; z-index:9999; animation:pulse 1.2s ease-in-out infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
@@ -929,31 +1001,25 @@
     justify-content: center;
     color: var(--muted);
     font-size: 10px;
-    transition: left .3s, color .2s;
+    transition: left .3s, color .2s, background-color .25s, border-color .25s;
   }
   #toggle-panel:hover { color: var(--accent); }
   #toggle-panel.collapsed { left: 0; }
-  /* Disable transition while resizing so the button follows the handle smoothly */
   .resizing #toggle-panel { transition: color .2s; }
 
-  /* ══════════════════════════════════════════
-     RESPONSIVE — narrow viewports
-     On small screens, panel becomes an overlay drawer
-  ══════════════════════════════════════════ */
   @media (max-width: 768px) {
     :root { --panel-w: 88vw; --panel-max: 95vw; }
     #panel {
       position: absolute;
       top: 0; left: 0; bottom: 0;
       z-index: 700;
-      box-shadow: 4px 0 20px rgba(0,0,0,.5);
+      box-shadow: 4px 0 20px var(--shadow-strong);
       max-width: 95vw;
     }
     #toggle-panel {
       left: var(--panel-w);
       max-left: 95vw;
     }
-    /* Bigger hit area + more visible grip on touch */
     #panel-resize {
       width: 20px;
       right: -10px;
@@ -966,7 +1032,7 @@
   }
 </style>
 </head>
-<body>
+<body data-theme="dark">
 
 <!-- ═══════ NAV ═══════ -->
 <nav>
@@ -980,6 +1046,17 @@
   </div>
   <div class="nav-right">
     <span class="nav-badge">River &amp; Reservoir Analysis</span>
+    <button id="theme-toggle" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle light/dark theme">
+      <!-- Sun icon shown in dark mode (click to go light) -->
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+      </svg>
+      <!-- Moon icon shown in light mode (click to go dark) -->
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
   </div>
 </nav>
 
@@ -1077,6 +1154,12 @@
       <div class="howto-body">Click the small <kbd>‹</kbd> tab on the right edge of the sidebar to collapse it for a full-screen map view. Click <kbd>›</kbd> to bring it back.</div>
     </div>
 
+    <div class="howto-card">
+      <div class="howto-step">Step 10</div>
+      <div class="howto-title">Light &amp; dark theme</div>
+      <div class="howto-body">Use the <b>sun / moon</b> button in the top-right of the navigation bar to switch between dark and light themes. The map basemap stays the same, but every panel and chart adapts to your choice.</div>
+    </div>
+
   </div>
 
   <div class="howto-tips">
@@ -1086,6 +1169,7 @@
       <li>Changing the metric in either the small or large time series view <b>syncs both</b>.</li>
       <li>Selected features stay highlighted on the map (slightly larger and brighter) so you can still see context while the layers load.</li>
       <li>Time series chart type changes per metric: <b>line</b> for runoff, <b>bars</b> for precipitation.</li>
+      <li>Switching theme also <b>auto-suggests a matching basemap</b> the first time (Dark ↔ Light) — you can override it at any time from the Layers panel.</li>
     </ul>
   </div>
 </div>
@@ -1130,22 +1214,18 @@
 <div class="workspace">
   <div id="panel">
 
-    <!-- Everything inside this wrapper scrolls when content overflows vertically -->
     <div class="panel-scroll">
 
       <div class="panel-header">
         <h2>Map Layers</h2>
       </div>
 
-      <!-- Search by ID — always on top -->
       <div class="search-box">
         <input id="search" type="text" placeholder="Search by ID…" oninput="handleSearch()"/>
       </div>
 
-      <!-- Search results (shown only when typing) -->
       <div id="search-results"></div>
 
-      <!-- Feature checkboxes -->
       <div class="feature-checks">
         <label class="feature-check-row">
           <span class="fcheck check-res">
@@ -1171,7 +1251,6 @@
         </label>
       </div>
 
-      <!-- Layer toggles -->
       <div class="layer-toggles">
         <div class="layer-toggle-row">
           <div class="layer-toggle-label">
@@ -1193,15 +1272,12 @@
         </div>
       </div>
 
-      <!-- Spacer -->
       <div class="panel-spacer"></div>
 
-      <!-- Info card -->
       <div id="info-card">
         <div style="color:var(--muted);font-size:11px;padding-top:2px;">Select a feature to view details</div>
       </div>
 
-      <!-- Time series card -->
       <div id="ts-card">
         <div class="ts-head">
           <span class="ts-title">Time Series</span>
@@ -1233,7 +1309,6 @@
         <div class="ts-axis-x" id="ts-axis-x"><span>–</span><span>–</span></div>
       </div>
 
-      <!-- Legend -->
       <div id="legend">
         <div class="leg-title">Legend</div>
         <div class="leg-row">
@@ -1256,7 +1331,6 @@
 
     </div><!-- /panel-scroll -->
 
-    <!-- Drag handle to resize sidebar width -->
     <div id="panel-resize" title="Drag to resize"></div>
 
   </div><!-- /panel -->
@@ -1264,7 +1338,6 @@
   <button id="toggle-panel" onclick="togglePanel()" title="Toggle panel">&#8249;</button>
   <div id="map"></div>
 
-  <!-- Basemap + Opacity control -->
   <div id="map-controls">
     <div id="map-control-panel">
       <div>
@@ -1339,9 +1412,73 @@ const GEOJSON_DIR = "geojson";
 var RESERVOIRS = [];
 var BARRIERS   = [];
 
-// Barrier color (kept in sync with CSS --barrier)
-var BARRIER_COLOR = '#ef4444';
-var BARRIER_FILL  = 'rgba(239,68,68,0.12)';
+// Theme-dependent colors are read from CSS variables at runtime so they stay
+// in sync with whatever theme is active.
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+function getAccent()   { return cssVar('--accent')   || '#38bdf8'; }
+function getAccent2()  { return cssVar('--accent2')  || '#4ade80'; }
+function getAccent3()  { return cssVar('--accent3')  || '#fb923c'; }
+function getBarrier()  { return cssVar('--barrier')  || '#ef4444'; }
+function getMuted()    { return cssVar('--muted')    || '#64748b'; }
+function getGridLine() { return cssVar('--grid-line')|| '#243048'; }
+function getTooltipStroke() { return cssVar('--tooltip-stroke') || '#0b0f1a'; }
+
+// Barrier fill is derived from --barrier with a fixed alpha; computed lazily.
+function getBarrierFill() {
+  // Use a translucent version of the barrier color regardless of theme
+  return 'rgba(239,68,68,0.12)';
+}
+function getAccentFill() {
+  // Translucent reservoir color
+  return getCurrentTheme() === 'light'
+    ? 'rgba(2,132,199,0.14)'
+    : 'rgba(56,189,248,0.12)';
+}
+
+// ─────────────────────────────────────────────────
+//  Theme handling
+// ─────────────────────────────────────────────────
+function getCurrentTheme() {
+  return document.body.getAttribute('data-theme') || 'dark';
+}
+
+function applyTheme(theme) {
+  document.body.setAttribute('data-theme', theme);
+  // Also set it on <html> so [data-theme] selectors at :root level work nicely
+  document.documentElement.setAttribute('data-theme', theme);
+
+  // Swap basemap to the matching default if the user hasn't picked one manually
+  if (!userPickedBasemap && currentTileLayer) {
+    var preferred = (theme === 'light') ? 'light' : 'dark';
+    var bm = BASEMAPS.find(function(b){ return b.id === preferred; });
+    if (bm) setBasemap(bm, /*userInitiated=*/false);
+  }
+
+  // Repaint markers (selected ones get a theme-appropriate accent color)
+  refreshAllMarkerIcons();
+
+  // Repaint overlays (watershed/downstream/charts) so colors track the theme
+  if (watershedLayer)  watershedLayer.setStyle({ color: getAccent2(), fillColor: getAccent2() });
+  if (downstreamLayer) downstreamLayer.setStyle({ color: getAccent3() });
+  if (downstreamLayer) {
+    downstreamLayer.eachLayer(function(l){
+      if (l.setStyle) l.setStyle({ color: getAccent3(), fillColor: getAccent3() });
+    });
+  }
+  // Re-render any time series so the inline SVG color values pick up new accents
+  if (tsData && activeId) {
+    renderTimeSeries();
+    if (document.getElementById('ts-modal').classList.contains('visible')) {
+      renderTimeSeriesModal();
+    }
+  }
+}
+
+function toggleTheme() {
+  applyTheme(getCurrentTheme() === 'light' ? 'dark' : 'light');
+}
 
 // ─────────────────────────────────────────────────
 //  Nav
@@ -1375,13 +1512,16 @@ var BASEMAPS = [
 ];
 
 var currentTileLayer = null;
-function setBasemap(bm) {
+var userPickedBasemap = false;   // set to true once the user clicks a basemap thumb
+
+function setBasemap(bm, userInitiated) {
   if (currentTileLayer) map.removeLayer(currentTileLayer);
   currentTileLayer = L.tileLayer(bm.url, Object.assign({attribution:bm.attr},bm.opts)).addTo(map);
   currentTileLayer.bringToBack();
   document.querySelectorAll('.basemap-thumb').forEach(function(el){
     el.classList.toggle('active', el.dataset.id===bm.id);
   });
+  if (userInitiated) userPickedBasemap = true;
 }
 (function(){
   var grid = document.getElementById('basemap-grid');
@@ -1390,11 +1530,11 @@ function setBasemap(bm) {
     div.className = 'basemap-thumb'+(bm.id==='dark'?' active':'');
     div.dataset.id = bm.id;
     div.innerHTML = '<div class="bm-preview" style="background:'+bm.color+'"></div><span class="bm-label">'+bm.label+'</span>';
-    div.addEventListener('click',function(){ setBasemap(bm); });
+    div.addEventListener('click',function(){ setBasemap(bm, /*userInitiated=*/true); });
     grid.appendChild(div);
   });
 })();
-setBasemap(BASEMAPS[0]);
+setBasemap(BASEMAPS[0], /*userInitiated=*/false);
 
 function toggleMapControls(){
   var p=document.getElementById('map-control-panel'),b=document.getElementById('map-control-toggle');
@@ -1413,20 +1553,32 @@ function updateOpacity(type,val){
 //  Marker factories
 // ─────────────────────────────────────────────────
 function makeIcon(type, active) {
-  var c   = active ? (type==='barrier' ? BARRIER_COLOR : '#4ade80')
-                   : (type==='barrier' ? BARRIER_COLOR : '#38bdf8');
-  var sz  = active ? 9 : 6;           // visible marker size
+  var accent  = getAccent();
+  var accent2 = getAccent2();
+  var barrier = getBarrier();
+  var c   = active ? (type==='barrier' ? barrier : accent2)
+                   : (type==='barrier' ? barrier : accent);
+  var sz  = active ? 9 : 6;
   var op  = active ? 1 : 0.75;
-  var hit = active ? 22 : 18;         // total hit area (transparent box around the dot)
+  var hit = active ? 22 : 18;
   var visible = type==='barrier'
     ? '<div style="width:'+sz+'px;height:'+sz+'px;background:'+c+';transform:rotate(45deg);box-shadow:0 0 5px '+c+';opacity:'+op+'"></div>'
     : '<div style="width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:'+c+';box-shadow:0 0 5px '+c+';opacity:'+op+'"></div>';
-  // Outer div: hit area, transparent. Inner div: the visible dot, centered.
   var html =
     '<div style="width:'+hit+'px;height:'+hit+'px;display:flex;align-items:center;justify-content:center;cursor:pointer;">'+
       visible+
     '</div>';
   return L.divIcon({ className:'', html:html, iconSize:[hit,hit], iconAnchor:[hit/2,hit/2] });
+}
+
+function refreshAllMarkerIcons() {
+  Object.keys(markerMap).forEach(function(key){
+    var entry = markerMap[key];
+    var isActive = (activeId !== null) &&
+                   (entry.type === activeType) &&
+                   (entry.data.id === activeId);
+    entry.marker.setIcon(makeIcon(entry.type, isActive));
+  });
 }
 
 // ─────────────────────────────────────────────────
@@ -1577,16 +1729,18 @@ function drawLayers(ws, ds) {
   var showWS=document.getElementById('toggle-watershed').checked;
   var showDS=document.getElementById('toggle-downstream').checked;
   var hasWS=false, hasDS=false;
+  var a2 = getAccent2();
+  var a3 = getAccent3();
   if (ws&&showWS) {
     hasWS=true;
-    watershedLayer=L.geoJSON(ws,{style:{color:'#4ade80',weight:1.5,opacity:Math.min(wsOpacity*6,0.9),fillColor:'#4ade80',fillOpacity:wsOpacity*0.8}}).addTo(map);
+    watershedLayer=L.geoJSON(ws,{style:{color:a2,weight:1.5,opacity:Math.min(wsOpacity*6,0.9),fillColor:a2,fillOpacity:wsOpacity*0.8}}).addTo(map);
     map.fitBounds(watershedLayer.getBounds().pad(0.1));
   }
   if (ds&&showDS) {
     hasDS=true;
     downstreamLayer=L.geoJSON(ds,{
-      style:{color:'#fb923c',weight:2,opacity:dsOpacity},
-      pointToLayer:function(f,ll){ return L.circleMarker(ll,{radius:3,color:'#fb923c',fillColor:'#fb923c',fillOpacity:0.8,weight:1}); }
+      style:{color:a3,weight:2,opacity:dsOpacity},
+      pointToLayer:function(f,ll){ return L.circleMarker(ll,{radius:3,color:a3,fillColor:a3,fillOpacity:0.8,weight:1}); }
     }).addTo(map);
     if(!hasWS) map.fitBounds(downstreamLayer.getBounds().pad(0.1));
   }
@@ -1703,7 +1857,6 @@ function fetchTimeSeries(id, type) {
 
 function renderTimeSeries() {
   if (!tsData || !activeId) return;
-  // Keep modal in sync if it's open
   var modalMetric = document.getElementById('ts-modal-metric');
   if (modalMetric) modalMetric.value = document.getElementById('ts-metric').value;
   renderTimeSeriesModal();
@@ -1761,19 +1914,17 @@ function renderTimeSeries() {
   }
 
   var isBarrier = activeType === 'barrier';
-  var stroke = isBarrier ? BARRIER_COLOR : '#38bdf8';
-  var fill   = isBarrier ? BARRIER_FILL  : 'rgba(56,189,248,0.12)';
+  var stroke = isBarrier ? getBarrier() : getAccent();
+  var fill   = isBarrier ? getBarrierFill()  : getAccentFill();
   var isPrecip = (metric === 'Precip');
 
   var svg = document.getElementById('ts-svg');
   if (isPrecip) {
-    // Vertical bars for precipitation.
-    // Bar baseline = max(0, min) so we don't draw bars below zero when all values are positive.
     var base = Math.max(0, min);
     var baseY = yAt(base);
     var plotW = W - 2 * pad;
-    var slot  = plotW / n;                       // width of one time slot
-    var bw    = Math.max(0.6, slot * 0.7);       // bar width (with some gap)
+    var slot  = plotW / n;
+    var bw    = Math.max(0.6, slot * 0.7);
     var barsHtml = '';
     for (var bi = 0; bi < n; bi++) {
       var bv = values[bi];
@@ -1782,7 +1933,6 @@ function renderTimeSeries() {
       var by = yAt(bv);
       var topY = Math.min(by, baseY);
       var hPx  = Math.abs(by - baseY);
-      // Minimum 1px height so very small values are still visible
       if (hPx < 1) hPx = 1;
       barsHtml +=
         '<rect x="' + (cx - bw / 2).toFixed(2) + '" y="' + topY.toFixed(2) +
@@ -1838,8 +1988,6 @@ function renderTimeSeries() {
     dot.style.opacity  = 0;
     tip.style.opacity  = 0;
   };
-  // Hide tooltip immediately on click anywhere in the plot
-  // (prevents stale tooltip from lingering when user clicks instead of hovers)
   plot.onmousedown = function() {
     line.style.opacity = 0;
     dot.style.opacity  = 0;
@@ -1847,12 +1995,10 @@ function renderTimeSeries() {
   };
 }
 
-// Globally dismiss the time-series tooltip on any click outside the plot
-// (e.g. clicking the metric dropdown, info card, map, etc.)
 document.addEventListener('mousedown', function(e) {
   var plot = document.querySelector('.ts-plot');
   if (!plot) return;
-  if (plot.contains(e.target)) return;   // hovering the chart itself — let the chart handle it
+  if (plot.contains(e.target)) return;
   var line = document.getElementById('ts-hover-line');
   var dot  = document.getElementById('ts-hover-dot');
   var tip  = document.getElementById('ts-tooltip');
@@ -1870,7 +2016,7 @@ function renderTSEmpty() {
   document.getElementById('ts-y-min').textContent = '–';
   document.getElementById('ts-axis-x').innerHTML = '<span>–</span><span>–</span>';
   document.getElementById('ts-svg').innerHTML =
-    '<text x="140" y="55" text-anchor="middle" fill="#64748b" font-family="Bitter,serif" font-size="11" font-style="italic">No time series data</text>';
+    '<text x="140" y="55" text-anchor="middle" fill="'+getMuted()+'" font-family="Bitter,serif" font-size="11" font-style="italic">No time series data</text>';
 }
 
 function showTimeSeries(id, type) {
@@ -1884,7 +2030,7 @@ function showTimeSeries(id, type) {
   document.getElementById('ts-y-mid').textContent = '…';
   document.getElementById('ts-y-min').textContent = '…';
   document.getElementById('ts-svg').innerHTML =
-    '<text x="140" y="55" text-anchor="middle" fill="#64748b" font-family="Bitter,serif" font-size="11" font-style="italic">Loading…</text>';
+    '<text x="140" y="55" text-anchor="middle" fill="'+getMuted()+'" font-family="Bitter,serif" font-size="11" font-style="italic">Loading…</text>';
   document.getElementById('ts-axis-x').innerHTML = '<span>–</span><span>–</span>';
 
   var thisId = id, thisType = type;
@@ -1899,20 +2045,17 @@ function showTimeSeries(id, type) {
 function hideTimeSeries() {
   document.getElementById('ts-card').className = '';
   tsData = null;
-  // If the modal is open for this feature, close it too
   closeTimeSeriesModal();
 }
 
 // ─────────────────────────────────────────────────
-//  Time series MODAL (large view)
+//  Time series MODAL
 // ─────────────────────────────────────────────────
 function openTimeSeriesModal() {
   if (!tsData || !activeId) return;
   var modal = document.getElementById('ts-modal');
-  // Sync metric selector with the small card's selector
   document.getElementById('ts-modal-metric').value =
     document.getElementById('ts-metric').value;
-  // Title + subtitle
   var isBarrier = activeType === 'barrier';
   modal.classList.toggle('barrier', isBarrier);
   document.getElementById('ts-modal-title').textContent =
@@ -1941,20 +2084,16 @@ function closeTimeSeriesModal() {
 }
 
 function handleModalBackdropClick(e) {
-  // Clicking the backdrop (not the box) closes the modal
   if (e.target.id === 'ts-modal') closeTimeSeriesModal();
 }
 
-// When the user changes metric inside the modal, mirror it back to the small card
-// and re-render both views
 function syncMetricFromModal() {
   var v = document.getElementById('ts-modal-metric').value;
   document.getElementById('ts-metric').value = v;
-  renderTimeSeries();          // updates the small chart
-  renderTimeSeriesModal();     // updates the large chart
+  renderTimeSeries();
+  renderTimeSeriesModal();
 }
 
-// Esc closes the modal
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
     var modal = document.getElementById('ts-modal');
@@ -1994,7 +2133,6 @@ function renderTimeSeriesModal() {
   document.getElementById('ts-modal-y-mid').textContent = ((max + min) / 2).toFixed(dp);
   document.getElementById('ts-modal-y-min').textContent = min.toFixed(dp);
 
-  // Bigger viewBox for the modal chart
   var W = 800, H = 380, pad = 8;
   var n = values.length;
   var range = max - min || 1;
@@ -2019,23 +2157,23 @@ function renderTimeSeriesModal() {
   }
 
   var isBarrier = activeType === 'barrier';
-  var stroke = isBarrier ? BARRIER_COLOR : '#38bdf8';
-  var fill   = isBarrier ? BARRIER_FILL  : 'rgba(56,189,248,0.12)';
+  var stroke = isBarrier ? getBarrier() : getAccent();
+  var fill   = isBarrier ? getBarrierFill()  : getAccentFill();
   var dotFill = stroke;
   var isPrecip = (metric === 'Precip');
+  var gridColor = getGridLine();
+  var tooltipStroke = getTooltipStroke();
 
-  // Build gridlines (3 horizontal, at top/mid/bottom) for readability
   var gridY1 = pad;
   var gridY2 = H / 2;
   var gridY3 = H - pad;
   var gridLines =
-    '<line x1="' + pad + '" y1="' + gridY1 + '" x2="' + (W - pad) + '" y2="' + gridY1 + '" stroke="#243048" stroke-width="0.5" stroke-dasharray="3 3"/>' +
-    '<line x1="' + pad + '" y1="' + gridY2 + '" x2="' + (W - pad) + '" y2="' + gridY2 + '" stroke="#243048" stroke-width="0.5" stroke-dasharray="3 3"/>' +
-    '<line x1="' + pad + '" y1="' + gridY3 + '" x2="' + (W - pad) + '" y2="' + gridY3 + '" stroke="#243048" stroke-width="0.5" stroke-dasharray="3 3"/>';
+    '<line x1="' + pad + '" y1="' + gridY1 + '" x2="' + (W - pad) + '" y2="' + gridY1 + '" stroke="'+gridColor+'" stroke-width="0.5" stroke-dasharray="3 3"/>' +
+    '<line x1="' + pad + '" y1="' + gridY2 + '" x2="' + (W - pad) + '" y2="' + gridY2 + '" stroke="'+gridColor+'" stroke-width="0.5" stroke-dasharray="3 3"/>' +
+    '<line x1="' + pad + '" y1="' + gridY3 + '" x2="' + (W - pad) + '" y2="' + gridY3 + '" stroke="'+gridColor+'" stroke-width="0.5" stroke-dasharray="3 3"/>';
 
   var svg = document.getElementById('ts-modal-svg');
   if (isPrecip) {
-    // Vertical bars for precipitation
     var baseM = Math.max(0, min);
     var baseYM = yAt(baseM);
     var plotWM = W - 2 * pad;
@@ -2058,21 +2196,19 @@ function renderTimeSeriesModal() {
     svg.innerHTML =
       gridLines +
       barsHtmlM +
-      '<line id="ts-modal-hover-line" x1="0" y1="0" x2="0" y2="' + H + '" stroke="#64748b" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>' +
-      '<circle id="ts-modal-hover-dot" r="5" cx="0" cy="0" fill="' + dotFill + '" stroke="#0b0f1a" stroke-width="2" opacity="0"/>';
+      '<line id="ts-modal-hover-line" x1="0" y1="0" x2="0" y2="' + H + '" stroke="'+getMuted()+'" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>' +
+      '<circle id="ts-modal-hover-dot" r="5" cx="0" cy="0" fill="' + dotFill + '" stroke="'+tooltipStroke+'" stroke-width="2" opacity="0"/>';
   } else {
     svg.innerHTML =
       gridLines +
       (areaD ? '<path d="' + areaD + '" fill="' + fill + '" stroke="none"/>' : '') +
       '<path d="' + pathD + '" fill="none" stroke="' + stroke + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
-      '<line id="ts-modal-hover-line" x1="0" y1="0" x2="0" y2="' + H + '" stroke="#64748b" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>' +
-      '<circle id="ts-modal-hover-dot" r="5" cx="0" cy="0" fill="' + dotFill + '" stroke="#0b0f1a" stroke-width="2" opacity="0"/>';
+      '<line id="ts-modal-hover-line" x1="0" y1="0" x2="0" y2="' + H + '" stroke="'+getMuted()+'" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>' +
+      '<circle id="ts-modal-hover-dot" r="5" cx="0" cy="0" fill="' + dotFill + '" stroke="'+tooltipStroke+'" stroke-width="2" opacity="0"/>';
   }
 
-  // X-axis: choose a number of evenly-spaced ticks that fits the modal width.
-  // We aim for ~110px between labels and clamp to [2 .. min(n, 12)].
   var modalWidth = document.querySelector('.ts-modal-box').getBoundingClientRect().width || 800;
-  var availableX = modalWidth - 80; // approximate plot width after y-axis + padding
+  var availableX = modalWidth - 80;
   var targetTicks = Math.max(2, Math.min(n, Math.min(12, Math.floor(availableX / 110))));
   var axisHtml = '<div class="x-track">';
   for (var t = 0; t < targetTicks; t++) {
@@ -2086,13 +2222,11 @@ function renderTimeSeriesModal() {
   axisHtml += '</div>';
   document.getElementById('ts-modal-axis-x').innerHTML = axisHtml;
 
-  // Hover interaction
   var plot = document.getElementById('ts-modal-plot');
   var tip  = document.getElementById('ts-modal-tooltip');
   var line = document.getElementById('ts-modal-hover-line');
   var dot  = document.getElementById('ts-modal-hover-dot');
 
-  // Friendly label for the selected metric (matches dropdown options)
   var metricLabels = {
     'Surface':     'Surface Runoff',
     'Sub_Surface': 'Sub-Surface Runoff',
@@ -2143,14 +2277,14 @@ function renderModalEmpty() {
   document.getElementById('ts-modal-y-min').textContent = '–';
   document.getElementById('ts-modal-axis-x').innerHTML = '<div class="x-track"><span class="x-tick x-first">–</span><span class="x-tick x-last" style="left:100%;">–</span></div>';
   document.getElementById('ts-modal-svg').innerHTML =
-    '<text x="400" y="190" text-anchor="middle" fill="#64748b" font-family="Bitter,serif" font-size="14" font-style="italic">No time series data</text>';
+    '<text x="400" y="190" text-anchor="middle" fill="'+getMuted()+'" font-family="Bitter,serif" font-size="14" font-style="italic">No time series data</text>';
 }
 
 // ─────────────────────────────────────────────────
 //  Panel toggle + Resize
 // ─────────────────────────────────────────────────
 var panelOpen=true;
-var panelWidth = 400;   // current width in px (kept in sync with --panel-w)
+var panelWidth = 400;
 
 function togglePanel(){
   panelOpen=!panelOpen;
@@ -2158,20 +2292,17 @@ function togglePanel(){
   var btn=document.getElementById('toggle-panel');
   btn.classList.toggle('collapsed',!panelOpen);
   btn.innerHTML=panelOpen?'&#8249;':'&#8250;';
-  // When opening, move the toggle button to match current panel width
   if (panelOpen) btn.style.left = panelWidth + 'px';
-  else           btn.style.left = '';   // CSS handles the collapsed position
+  else           btn.style.left = '';
   setTimeout(function(){ map.invalidateSize(); },310);
 }
 
-// Resize sidebar by dragging the right edge
 (function setupResize() {
   var handle = document.getElementById('panel-resize');
   var panel  = document.getElementById('panel');
   var toggleBtn = document.getElementById('toggle-panel');
   var workspace = document.querySelector('.workspace');
 
-  // Parse min/max from CSS variables (so we can update them on the fly)
   function readBounds() {
     var s = getComputedStyle(document.documentElement);
     var minStr = s.getPropertyValue('--panel-min').trim();
@@ -2186,7 +2317,6 @@ function togglePanel(){
 
   function setWidth(px) {
     var b = readBounds();
-    // Cap to workspace width minus a small margin so the map remains usable
     var wsRect = workspace.getBoundingClientRect();
     var ceiling = Math.min(b.max, wsRect.width - 120);
     if (ceiling < b.min) ceiling = b.min;
@@ -2235,17 +2365,13 @@ function togglePanel(){
   window.addEventListener('touchmove',  onPointerMove,  {passive:false});
   window.addEventListener('touchend',   onPointerUp);
 
-  // Double-click to reset to default width
   handle.addEventListener('dblclick', function() { setWidth(400); });
 
-  // Keep things sane on window resize
   window.addEventListener('resize', function() {
-    // Re-clamp current width to new bounds
     setWidth(panel.getBoundingClientRect().width);
     map.invalidateSize();
   });
 
-  // Initial sync
   setTimeout(function(){
     panelWidth = panel.getBoundingClientRect().width || 400;
     if (panelOpen) toggleBtn.style.left = panelWidth + 'px';
