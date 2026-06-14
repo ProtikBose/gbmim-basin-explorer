@@ -234,9 +234,9 @@
   /* ── How to Use page ── */
   .howto-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 18px;
-    max-width: 1100px;
+    max-width: 1800px;
     margin-bottom: 32px;
   }
   .howto-card {
@@ -760,7 +760,56 @@
     margin: 0 8px;
     color: var(--border);
   }
-  .ts-modal-controls { display: flex; align-items: center; gap: 8px; }
+  .ts-modal-controls { display: flex; align-items: center; gap: 8px; position: relative; }
+.ts-modal-menu-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  width: 30px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+  font-size: 16px;
+  line-height: 1;
+}
+.ts-modal-menu-btn:hover { color: var(--text); border-color: var(--muted); }
+.ts-modal-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px var(--shadow-med);
+  min-width: 170px;
+  z-index: 10;
+  display: none;
+  overflow: hidden;
+  padding: 4px;
+}
+.ts-modal-menu-dropdown.open { display: block; }
+.ts-modal-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background .12s;
+}
+.ts-modal-menu-item:hover { background: var(--surface2); }
+.ts-modal-menu-item svg { width: 14px; height: 14px; flex-shrink: 0; color: var(--muted); }
   .ts-modal-metric {
     background: var(--bg);
     border: 1px solid var(--border);
@@ -1409,6 +1458,14 @@
           <option value="Sub_Surface">Sub-Surface Runoff</option>
           <option value="Precip">Precipitation</option>
         </select>
+        <button class="ts-modal-menu-btn" onclick="toggleTsModalMenu(event)" title="More options" aria-label="More options">⋮</button>
+        <!-- To Download Image uncomment this -->
+        <!-- <div class="ts-modal-menu-dropdown" id="ts-modal-menu-dropdown">
+          <button class="ts-modal-menu-item" onclick="downloadTimeSeriesPNG()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download as PNG
+          </button>
+        </div> -->
         <button class="ts-modal-close" onclick="closeTimeSeriesModal()">✕ Close</button>
       </div>
     </div>
@@ -2192,6 +2249,115 @@ function openTimeSeriesModal() {
 function closeTimeSeriesModal() {
   var modal = document.getElementById('ts-modal');
   if (modal) modal.classList.remove('visible');
+  closeTsModalMenu();
+}
+
+function toggleTsModalMenu(e) {
+  e.stopPropagation();
+  var dd = document.getElementById('ts-modal-menu-dropdown');
+  dd.classList.toggle('open');
+}
+function closeTsModalMenu() {
+  var dd = document.getElementById('ts-modal-menu-dropdown');
+  if (dd) dd.classList.remove('open');
+}
+document.addEventListener('click', function(e) {
+  var dd = document.getElementById('ts-modal-menu-dropdown');
+  if (!dd || !dd.classList.contains('open')) return;
+  var btn = document.querySelector('.ts-modal-menu-btn');
+  if (dd.contains(e.target) || (btn && btn.contains(e.target))) return;
+  dd.classList.remove('open');
+});
+
+function downloadTimeSeriesPNG() {
+  closeTsModalMenu();
+  if (!tsData || !activeId) return;
+
+  var svgEl = document.getElementById('ts-modal-svg');
+  var svgRect = document.getElementById('ts-modal-plot').getBoundingClientRect();
+  var scale = 2;
+
+  var bgColor   = cssVar('--surface') || '#111827';
+  var textColor = cssVar('--muted')   || '#64748b';
+
+  var yAxisVals = [
+    document.getElementById('ts-modal-y-max').textContent,
+    document.getElementById('ts-modal-y-mid').textContent,
+    document.getElementById('ts-modal-y-min').textContent
+  ];
+  var xTicks = Array.prototype.map.call(
+    document.querySelectorAll('#ts-modal-axis-x .x-tick'),
+    function(el){ return { text: el.textContent, pct: parseFloat(el.style.left) || 0, isLast: el.classList.contains('x-last') }; }
+  );
+
+  var yAxisW = 56 * scale;
+  var xAxisH = 24 * scale;
+  var pad    = 8 * scale;
+
+  var plotW = svgRect.width  * scale;
+  var plotH = svgRect.height * scale;
+
+  var clone = svgEl.cloneNode(true);
+  clone.setAttribute('width', plotW);
+  clone.setAttribute('height', plotH);
+
+  var serializer = new XMLSerializer();
+  var svgStr = serializer.serializeToString(clone);
+  var svgBlob = new Blob([svgStr], {type: 'image/svg+xml;charset=utf-8'});
+  var url = URL.createObjectURL(svgBlob);
+
+  var img = new Image();
+  img.onload = function() {
+    var canvas = document.createElement('canvas');
+    canvas.width  = yAxisW + plotW + pad;
+    canvas.height = plotH + xAxisH + pad;
+    var ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Plot image
+    ctx.drawImage(img, yAxisW, 0, plotW, plotH);
+
+    // Y-axis labels (max, mid, min)
+    ctx.fillStyle = textColor;
+    ctx.font = '600 ' + (11 * scale) + 'px Bitter, serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText(yAxisVals[0], yAxisW - 6, 2);
+    ctx.textBaseline = 'middle';
+    ctx.fillText(yAxisVals[1], yAxisW - 6, plotH / 2);
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(yAxisVals[2], yAxisW - 6, plotH - 2);
+
+    // X-axis tick labels
+    ctx.font = '600 ' + (11 * scale) + 'px Bitter, serif';
+    ctx.textBaseline = 'top';
+    var axisY = plotH + 6 * scale;
+    xTicks.forEach(function(tick) {
+      var x = yAxisW + (tick.pct / 100) * plotW;
+      if (tick.pct === 0) ctx.textAlign = 'left';
+      else if (tick.isLast) ctx.textAlign = 'right';
+      else ctx.textAlign = 'center';
+      ctx.fillText(tick.text, x, axisY);
+    });
+
+    URL.revokeObjectURL(url);
+
+    canvas.toBlob(function(blob) {
+      var title = document.getElementById('ts-modal-title').textContent;
+      var metricSelect = document.getElementById('ts-modal-metric');
+      var metricLabel = metricSelect.options[metricSelect.selectedIndex].text;
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = title.replace(/\s+/g, '_') + '_' + metricLabel.replace(/\s+/g, '_') + '.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    }, 'image/png');
+  };
+  img.src = url;
 }
 
 function handleModalBackdropClick(e) {
